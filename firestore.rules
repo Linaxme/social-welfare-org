@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function role() {
+      return userData().role;
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == 'superAdmin';
+    }
+
+    function isCollector() {
+      return signedIn() && role() == 'collector';
+    }
+
+    function isStaff() {
+      return isAdmin() || isCollector();
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || request.auth.uid == userId;
+      allow update: if isAdmin()
+        || (request.auth.uid == userId
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['name', 'phone', 'uniqueId']));
+      allow delete: if isAdmin();
+    }
+
+    match /donations/{id} {
+      allow read: if signedIn();
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    match /disbursements/{id} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        || (isCollector()
+            && get(/databases/$(database)/documents/org_settings/global)
+                .data.collectorCanEnterDonation == true);
+      allow update, delete: if isAdmin();
+    }
+
+    match /org_settings/{doc} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /dashboard_summary/{doc} {
+      allow read: if signedIn();
+      allow write: if isStaff();
+    }
+
+    match /counters/{doc} {
+      allow read, write: if isStaff();
+    }
+  }
+}

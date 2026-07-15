@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "974060890404",
+    "project_id": "socialwelfare-org",
+    "storage_bucket": "socialwelfare-org.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:974060890404:android:3fda9debb0dab3b85aabb1",
+        "android_client_info": {
+          "package_name": "com.example.somiti_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOqdLFVNcLI_zzwOJEd2-ra0ckkxsK-6A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
