@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/validators.dart';
 import '../../../shared/data/app_session.dart';
 import '../../../shared/services/auth_service.dart';
 
@@ -16,9 +17,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final _emailController =
-      TextEditingController(text: 'linaxme@gmail.com');
-  final _nameController = TextEditingController(text: 'সুপার অ্যাডমিন');
+  final _adminFormKey = GlobalKey<FormState>();
+  final _memberFormKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
@@ -43,6 +45,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _login() async {
+    // Validate the active form
+    final formKey = _tabController.index == 0 ? _adminFormKey : _memberFormKey;
+    if (!formKey.currentState!.validate()) return;
+
     setState(() {
       _loading = true;
       _error = null;
@@ -192,63 +198,71 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _adminForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_registerMode) ...[
-            Text('নাম', style: Theme.of(context).textTheme.labelLarge),
+      child: Form(
+        key: _adminFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_registerMode) ...[
+              Text('নাম', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _nameController,
+                validator: Validators.name,
+              ),
+              const SizedBox(height: 16),
+            ],
+            Text('ইমেইল', style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
-            TextField(controller: _nameController),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              validator: Validators.email,
+            ),
             const SizedBox(height: 16),
-          ],
-          Text('ইমেইল', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 16),
-          Text('পাসওয়ার্ড', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _passwordController,
-            obscureText: _obscure,
-            decoration: InputDecoration(
-              suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _obscure = !_obscure),
+            Text('পাসওয়ার্ড', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscure,
+              validator: Validators.password,
+              decoration: InputDecoration(
+                suffixIcon: IconButton(
+                  icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
               ),
             ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-          ],
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loading ? null : _login,
-            child: _loading
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(_registerMode ? 'প্রথম অ্যাডমিন তৈরি' : 'লগইন'),
-          ),
-          TextButton(
-            onPressed: _loading
-                ? null
-                : () => setState(() {
-                      _registerMode = !_registerMode;
-                      _error = null;
-                    }),
-            child: Text(
-              _registerMode
-                  ? 'আগে থেকে অ্যাকাউন্ট আছে? লগইন'
-                  : 'প্রথমবার? অ্যাডমিন রেজিস্টার',
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            ],
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loading ? null : _login,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(_registerMode ? 'প্রথম অ্যাডমিন তৈরি' : 'লগইন'),
             ),
-          ),
-        ],
+            TextButton(
+              onPressed: _loading
+                  ? null
+                  : () => setState(() {
+                        _registerMode = !_registerMode;
+                        _error = null;
+                      }),
+              child: Text(
+                _registerMode
+                    ? 'আগে থেকে অ্যাকাউন্ট আছে? লগইন'
+                    : 'প্রথমবার? অ্যাডমিন রেজিস্টার',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -256,54 +270,62 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _memberForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('ফোন নম্বর / ইউজার আইডি',
-              style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(hintText: '০১৭XXXXXXXX'),
-          ),
-          const SizedBox(height: 16),
-          Text('পাসওয়ার্ড', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _passwordController,
-            obscureText: _obscure,
-            decoration: InputDecoration(
-              suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _obscure = !_obscure),
+      child: Form(
+        key: _memberFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('ফোন নম্বর / ইউজার আইডি',
+                style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'ফোন নম্বর দিন';
+                return null;
+              },
+              decoration: const InputDecoration(hintText: '০১৭XXXXXXXX'),
+            ),
+            const SizedBox(height: 16),
+            Text('পাসওয়ার্ড', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscure,
+              validator: Validators.password,
+              decoration: InputDecoration(
+                suffixIcon: IconButton(
+                  icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
               ),
             ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            ],
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loading ? null : _login,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('লগইন'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'অ্যাডমিন মেম্বার যোগ করলে ফোন নম্বরই ইউজার আইডি',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
           ],
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loading ? null : _login,
-            child: _loading
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('লগইন'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'অ্যাডমিন মেম্বার যোগ করলে ফোন নম্বরই ইউজার আইডি',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-          ),
-        ],
+        ),
       ),
     );
   }

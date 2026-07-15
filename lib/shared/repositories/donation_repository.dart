@@ -72,7 +72,9 @@ class DonationRepository {
     );
 
     final userRef = _db.collection('users').doc(donor.id);
-    final dashRef = _db.collection('dashboard_summary').doc('global');
+    // Store data per year: dashboard_summary/{year}
+    final donationYear = paidAt.year;
+    final dashRef = _db.collection('dashboard_summary').doc('$donationYear');
 
     await _db.runTransaction((tx) async {
       final userSnap = await tx.get(userRef);
@@ -93,7 +95,6 @@ class DonationRepository {
         SetOptions(merge: true),
       );
 
-      final year = DateTime.now().year;
       final monthIndex = paidAt.month - 1;
       final d = dashSnap.data() ?? {};
       var monthly = List<int>.from(
@@ -104,24 +105,23 @@ class DonationRepository {
         monthly = [...monthly, ...List.filled(12 - monthly.length, 0)];
       }
 
-      var thisMonthCollection =
-          (d['thisMonthCollection'] as num?)?.toInt() ?? 0;
-      var totalDonorCount = (d['totalDonorCount'] as num?)?.toInt() ?? 0;
-      final dashYear = (d['year'] as num?)?.toInt() ?? year;
+      // Update monthly collection for the donation's year
+      monthly[monthIndex] = monthly[monthIndex] + amount;
 
-      if (dashYear != year) {
-        monthly = List.filled(12, 0);
-        thisMonthCollection = 0;
-      }
-
-      if (paidAt.year == year) {
-        monthly[monthIndex] = monthly[monthIndex] + amount;
-      }
-      if (paidAt.year == year && paidAt.month == DateTime.now().month) {
+      // Calculate this month's collection (only for current month in current year)
+      var thisMonthCollection = (d['thisMonthCollection'] as num?)?.toInt() ?? 0;
+      final now = DateTime.now();
+      if (donationYear == now.year && paidAt.month == now.month) {
         thisMonthCollection += amount;
+      } else if (donationYear != now.year) {
+        // If donation is for a different year, don't affect current thisMonthCollection
+        thisMonthCollection = (d['thisMonthCollection'] as num?)?.toInt() ?? 0;
       }
-      // First-ever donation from this person → new donor
-      if (prevCount == 0) {
+
+      var totalDonorCount = (d['totalDonorCount'] as num?)?.toInt() ?? 0;
+      // First-ever donation from this person in this year → new donor for this year
+      final prevYearDonationCount = (d['donorCount_${donor.id}'] as num?)?.toInt() ?? 0;
+      if (prevYearDonationCount == 0) {
         totalDonorCount += 1;
       }
 
@@ -134,7 +134,8 @@ class DonationRepository {
           'thisMonthCollection': thisMonthCollection,
           'totalDonorCount': totalDonorCount,
           'monthlyCollections': monthly,
-          'year': year,
+          'year': donationYear,
+          'donorCount_${donor.id}': prevYearDonationCount + 1,
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),

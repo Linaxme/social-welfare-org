@@ -40,12 +40,23 @@ class MemberProfileScreen extends StatelessWidget {
             icon: const Icon(Icons.edit_outlined),
             onPressed: () => context.push('/members/$memberId/edit'),
           ),
+        if (AppSession.instance.isAdmin)
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+            onPressed: () => _confirmDelete(context),
+          ),
       ],
       body: FutureBuilder(
         future: UserRepository.instance.getById(memberId),
         builder: (context, userSnap) {
           if (userSnap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const ShimmerList(itemCount: 3);
+          }
+          if (userSnap.hasError) {
+            return ErrorState(
+              message: 'মেম্বার তথ্য লোড করা যায়নি।',
+              onRetry: () => Navigator.of(context).pop(),
+            );
           }
           final member = userSnap.data;
           if (member == null) {
@@ -65,7 +76,10 @@ class MemberProfileScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                     child: Column(
                       children: [
-                        AvatarCircle(name: member.name, size: 72),
+                        AvatarCircle(
+                          name: member.name,
+                          size: 72,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           member.name,
@@ -196,6 +210,44 @@ class MemberProfileScreen extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('মেম্বার মুছুন'),
+        content: const Text('আপনি কি নিশ্চিত এই মেম্বারকে মুছে ফেলতে চান?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('বাতিল'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await UserRepository.instance.delete(memberId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('মেম্বার মুছে ফেলা হয়েছে')),
+                  );
+                  context.pop();
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('ব্যর্থ: $e')),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('মুছুন'),
+          ),
+        ],
       ),
     );
   }

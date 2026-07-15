@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/firebase/phone_id.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/validators.dart';
 import '../../../shared/repositories/user_repository.dart';
 import '../../../shared/widgets/app_page_header.dart';
 
@@ -17,6 +17,7 @@ class EditMemberScreen extends StatefulWidget {
 }
 
 class _EditMemberScreenState extends State<EditMemberScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _nid = TextEditingController();
@@ -59,19 +60,9 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   }
 
   Future<void> _save() async {
-    final phone = PhoneId.normalize(_phone.text);
-    if (_name.text.trim().isEmpty || !PhoneId.isValidBdMobile(phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('সঠিক নাম ও ফোন দিন')),
-      );
-      return;
-    }
-    if (_address.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ঠিকানা দিন')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+
+    final phone = Validators.cleanPhone(_phone.text);
     setState(() => _saving = true);
     try {
       await UserRepository.instance.updateProfile(
@@ -115,64 +106,73 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
     return AppPageScaffold(
       title: 'প্রোফাইল এডিট',
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('নাম', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(controller: _name),
-          const SizedBox(height: 16),
-          Text('ফোন নম্বর', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 16),
-          Text('এনআইডি নং (অপশনাল)',
-              style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nid,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: 'জাতীয় পরিচয়পত্র নম্বর'),
-          ),
-          const SizedBox(height: 16),
-          Text('ঠিকানা', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _address,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'গ্রাম/এলাকা, থানা, জেলা',
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text('নাম', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _name,
+              validator: Validators.name,
             ),
-          ),
-          const SizedBox(height: 16),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('সক্রিয় মেম্বার'),
-            value: _active,
-            activeThumbColor: AppColors.primary,
-            onChanged: (v) => setState(() => _active = v),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('সংরক্ষণ'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'আইডি: ${Formatters.phone(PhoneId.normalize(_phone.text))}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text('ফোন নম্বর', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              validator: Validators.phone,
+            ),
+            const SizedBox(height: 16),
+            Text('এনআইডি নং (অপশনাল)',
+                style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _nid,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(hintText: 'জাতীয় পরিচয়পত্র নম্বর'),
+              validator: Validators.nid,
+            ),
+            const SizedBox(height: 16),
+            Text('ঠিকানা', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _address,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'গ্রাম/এলাকা, থানা, জেলা',
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'ঠিকানা দিন' : null,
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('সক্রিয় মেম্বার'),
+              value: _active,
+              activeThumbColor: AppColors.primary,
+              onChanged: (v) => setState(() => _active = v),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('সংরক্ষণ'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'আইডি: ${Formatters.phone(Validators.cleanPhone(_phone.text))}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,7 +1,11 @@
 # Deploy Flutter web to Firebase Hosting (socialwelfare-org)
 # Run in an interactive PowerShell terminal:
 #   powershell -ExecutionPolicy Bypass -File .\scripts\deploy_web.ps1
-#   powershell -ExecutionPolicy Bypass -File .\scripts\deploy_web.ps1 -Rebuild
+#   powershell -ExecutionPolicy Bypass -File .\scripts\deploy_web.ps1 -SkipRebuild
+
+param(
+  [switch]$SkipRebuild
+)
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
@@ -13,11 +17,11 @@ Write-Host ""
 Write-Host "Using project socialwelfare-org..." -ForegroundColor Yellow
 firebase use socialwelfare-org
 
-if ((-not (Test-Path "build\web\index.html")) -or ($args -contains "-Rebuild")) {
+if ($SkipRebuild) {
+  Write-Host "Skipping rebuild because -SkipRebuild was supplied." -ForegroundColor DarkGray
+} else {
   Write-Host "Building Flutter web..." -ForegroundColor Yellow
   flutter build web --release
-} else {
-  Write-Host "Found build\web (skip rebuild). Pass -Rebuild to force." -ForegroundColor DarkGray
 }
 
 Write-Host ""

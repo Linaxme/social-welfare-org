@@ -89,53 +89,62 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
             child: StreamBuilder<List<DonationRecord>>(
               stream: DonationRepository.instance.watchAll(),
               builder: (context, snap) {
+                if (snap.hasError) {
+                  return ErrorState(
+                    message: 'ডাটা লোড করা যায়নি। আবার চেষ্টা করুন।',
+                    onRetry: () => setState(() {}),
+                  );
+                }
                 if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const ShimmerList();
                 }
                 final list = _filter(snap.data!);
                 if (list.isEmpty) {
                   return const EmptyState(
                       message: 'কোনো কালেকশন পাওয়া যায়নি');
                 }
-                return ListView.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(indent: 76, height: 1),
-                  itemBuilder: (context, index) {
-                    final d = list[index];
-                    return ListTile(
-                      leading: AvatarCircle(name: d.donorName),
-                      title: Text(d.donorName,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(
-                        '${Formatters.shortDate(d.paidAt)} · ${d.receiptNo}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            Formatters.money(d.amount),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.success,
+                return RefreshIndicator(
+                  onRefresh: () async => setState(() {}),
+                  child: ListView.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(indent: 76, height: 1),
+                    itemBuilder: (context, index) {
+                      final d = list[index];
+                      return ListTile(
+                        leading: AvatarCircle(name: d.donorName),
+                        title: Text(d.donorName,
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                          '${Formatters.shortDate(d.paidAt)} · ${d.receiptNo}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              Formatters.money(d.amount),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.success,
+                              ),
                             ),
-                          ),
-                          GestureDetector(
-                            onTap: () => ReceiptService.preview(context, d),
-                            child: const Text(
-                              'রিসিপ্ট',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppColors.primary),
+                            GestureDetector(
+                              onTap: () => ReceiptService.preview(context, d),
+                              child: const Text(
+                                'রিসিপ্ট',
+                                style: TextStyle(
+                                    fontSize: 11, color: AppColors.primary),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      onTap: () => context.push('/members/${d.donorId}'),
-                    );
-                  },
+                          ],
+                        ),
+                        onTap: () => context.push('/members/${d.donorId}'),
+                      );
+                    },
+                  ),
                 );
               },
             ),

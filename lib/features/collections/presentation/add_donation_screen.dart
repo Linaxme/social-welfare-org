@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/validators.dart';
 import '../../../shared/data/app_session.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/repositories/donation_repository.dart';
@@ -21,6 +22,7 @@ class AddDonationScreen extends StatefulWidget {
 
 class _AddDonationScreenState extends State<AddDonationScreen> {
   AppUser? _donor;
+  final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _note = TextEditingController();
   DateTime _date = DateTime.now();
@@ -119,15 +121,20 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   }
 
   Future<void> _save() async {
-    if (_donor == null || _amount.text.trim().isEmpty) {
+    // Validate donor selection
+    if (_donor == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('দাতা ও পরিমাণ দিন')),
+        const SnackBar(content: Text('দাতা বেছে নিন')),
       );
       return;
     }
+
+    // Validate amount using form
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
     try {
-      final amount = int.tryParse(_amount.text) ?? 0;
+      final amount = Validators.cleanAmount(_amount.text) ?? 0;
       final record = await DonationRepository.instance.addDonation(
         donor: _donor!,
         amount: amount,
@@ -176,100 +183,104 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   Widget build(BuildContext context) {
     return AppPageScaffold(
       title: 'জমা নিন',
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('দাতা', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: _pickDonor,
-            borderRadius: BorderRadius.circular(12),
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                suffixIcon: Icon(Icons.arrow_drop_down),
-              ),
-              child: Text(
-                _donor == null
-                    ? 'দাতা বেছে নিন'
-                    : '${_donor!.name} · ${Formatters.phone(_donor!.phone)}',
-                style: TextStyle(
-                  color: _donor == null
-                      ? AppColors.textSecondary
-                      : AppColors.textPrimary,
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text('দাতা', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _pickDonor,
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  suffixIcon: Icon(Icons.arrow_drop_down),
+                ),
+                child: Text(
+                  _donor == null
+                      ? 'দাতা বেছে নিন'
+                      : '${_donor!.name} · ${Formatters.phone(_donor!.phone)}',
+                  style: TextStyle(
+                    color: _donor == null
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
+                  ),
                 ),
               ),
             ),
-          ),
-          Row(
-            children: [
-              if (AppSession.instance.isAdmin)
-                TextButton.icon(
-                  onPressed: _selectSelf,
-                  icon: const Icon(Icons.person_outline, size: 18),
-                  label: const Text('নিজের জমা'),
-                ),
-              const Spacer(),
-              if (AppSession.instance.canManageMembers)
-                TextButton(
-                  onPressed: () => context.push('/members/new'),
-                  child: const Text('+ নতুন মেম্বার'),
-                ),
-            ],
-          ),
-          Text('পরিমাণ (টাকা)', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _amount,
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 14),
-          Text('পেমেন্ট মোড', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: _paymentMode,
-            items: const [
-              DropdownMenuItem(value: 'নগদ', child: Text('নগদ')),
-              DropdownMenuItem(value: 'বিকাশ', child: Text('বিকাশ')),
-              DropdownMenuItem(value: 'অন্যান্য', child: Text('অন্যান্য')),
-            ],
-            onChanged: (v) => setState(() => _paymentMode = v ?? _paymentMode),
-          ),
-          const SizedBox(height: 14),
-          Text('তারিখ', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _date,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) setState(() => _date = picked);
-            },
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                suffixIcon: Icon(Icons.calendar_today_outlined),
-              ),
-              child: Text(Formatters.shortDate(_date)),
+            Row(
+              children: [
+                if (AppSession.instance.isAdmin)
+                  TextButton.icon(
+                    onPressed: _selectSelf,
+                    icon: const Icon(Icons.person_outline, size: 18),
+                    label: const Text('নিজের জমা'),
+                  ),
+                const Spacer(),
+                if (AppSession.instance.canManageMembers)
+                  TextButton(
+                    onPressed: () => context.push('/members/new'),
+                    child: const Text('+ নতুন মেম্বার'),
+                  ),
+              ],
             ),
-          ),
-          const SizedBox(height: 14),
-          Text('নোট', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          TextField(controller: _note, maxLines: 2),
-          const SizedBox(height: 28),
-          ElevatedButton(
-            onPressed: _loading ? null : _save,
-            child: _loading
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('সেভ ও রিসিপ্ট'),
-          ),
-        ],
+            Text('পরিমাণ (টাকা)', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _amount,
+              keyboardType: TextInputType.number,
+              validator: Validators.amount,
+            ),
+            const SizedBox(height: 14),
+            Text('পেমেন্ট মোড', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _paymentMode,
+              items: const [
+                DropdownMenuItem(value: 'নগদ', child: Text('নগদ')),
+                DropdownMenuItem(value: 'বিকাশ', child: Text('বিকাশ')),
+                DropdownMenuItem(value: 'অন্যান্য', child: Text('অন্যান্য')),
+              ],
+              onChanged: (v) => setState(() => _paymentMode = v ?? _paymentMode),
+            ),
+            const SizedBox(height: 14),
+            Text('তারিখ', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _date = picked);
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  suffixIcon: Icon(Icons.calendar_today_outlined),
+                ),
+                child: Text(Formatters.shortDate(_date)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text('নোট', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextField(controller: _note, maxLines: 2),
+            const SizedBox(height: 28),
+            ElevatedButton(
+              onPressed: _loading ? null : _save,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('সেভ ও রিসিপ্ট'),
+            ),
+          ],
+        ),
       ),
     );
   }

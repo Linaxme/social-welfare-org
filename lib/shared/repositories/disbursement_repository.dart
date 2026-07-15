@@ -61,4 +61,8 @@ class DisbursementRepository {
 
     return saved;
   }
+
+  Future<void> delete(String id) async {
+    await _col.doc(id).delete();
+  }
 }

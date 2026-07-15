@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -14,6 +16,9 @@ class AppSession extends ChangeNotifier {
   AppUser? _user;
   bool _ready = false;
   bool _initializing = false;
+
+  StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<DocumentSnapshot>? _orgSettingsSubscription;
 
   AppUser? get userOrNull => _user;
   AppUser get user =>
@@ -43,7 +48,12 @@ class AppSession extends ChangeNotifier {
   Future<void> start() async {
     if (_initializing) return;
     _initializing = true;
-    AuthService.instance.authStateChanges().listen(_onAuthChanged);
+
+    // Cancel existing subscriptions to prevent duplicates
+    await _authSubscription?.cancel();
+    await _orgSettingsSubscription?.cancel();
+
+    _authSubscription = AuthService.instance.authStateChanges().listen(_onAuthChanged);
     final current = FirebaseAuth.instance.currentUser;
     if (current != null) {
       await _onAuthChanged(current);
@@ -51,7 +61,6 @@ class AppSession extends ChangeNotifier {
       _ready = true;
       notifyListeners();
     }
-    _listenOrgSettings();
   }
 
   Future<void> _onAuthChanged(User? firebaseUser) async {
@@ -60,6 +69,7 @@ class AppSession extends ChangeNotifier {
         _user = null;
       } else {
         _user = await AuthService.instance.loadCurrentUser();
+        _listenOrgSettings();
       }
     } catch (e, st) {
       debugPrint('Session load error: $e\n$st');
@@ -71,16 +81,21 @@ class AppSession extends ChangeNotifier {
   }
 
   void _listenOrgSettings() {
-    FirebaseFirestore.instance
+    _orgSettingsSubscription = FirebaseFirestore.instance
         .collection('org_settings')
         .doc('global')
         .snapshots()
-        .listen((snap) {
-      final d = snap.data();
-      if (d == null) return;
-      OrgSettings.instance.applyFromMap(d);
-      notifyListeners();
-    });
+        .listen(
+      (snap) {
+        final d = snap.data();
+        if (d == null) return;
+        OrgSettings.instance.applyFromMap(d);
+        notifyListeners();
+      },
+      onError: (e) {
+        debugPrint('OrgSettings listener error: $e');
+      },
+    );
   }
 
   Future<void> setUser(AppUser user) async {
@@ -89,9 +104,23 @@ class AppSession extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Cancel Firestore listener
+    await _orgSettingsSubscription?.cancel();
+    _orgSettingsSubscription = null;
+
     await AuthService.instance.signOut();
     _user = null;
+    _ready = true;
     notifyListeners();
+  }
+
+  /// Cancel all subscriptions. Call when app is being destroyed.
+  Future<void> dispose() async {
+    await _authSubscription?.cancel();
+    await _orgSettingsSubscription?.cancel();
+    _authSubscription = null;
+    _orgSettingsSubscription = null;
+    _initializing = false;
   }
 
   // Kept for UI demos only — prefer real roles from Firestore.

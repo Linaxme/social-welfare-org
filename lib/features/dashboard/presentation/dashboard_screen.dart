@@ -50,9 +50,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: StreamBuilder<DashboardSummary>(
-        stream: DashboardRepository.instance.watchSummary(),
+        stream: DashboardRepository.instance.watchSummary(year: _selectedYear),
         builder: (context, dashSnap) {
-          final summary = dashSnap.data ??
+          final yearSummary = dashSnap.data ??
               const DashboardSummary(
                 totalCollection: 0,
                 totalDonation: 0,
@@ -60,18 +60,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 totalDonorCount: 0,
                 monthlyCollections: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               );
-          final balance =
-              summary.totalCollection - summary.totalDonation;
+
+          return StreamBuilder<DashboardSummary>(
+            stream: DashboardRepository.instance.watchAllTimeSummary(),
+            builder: (context, allTimeSnap) {
+              final allTime = allTimeSnap.data ??
+                  const DashboardSummary(
+                    totalCollection: 0,
+                    totalDonation: 0,
+                    thisMonthCollection: 0,
+                    totalDonorCount: 0,
+                    monthlyCollections: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                  );
+              final allTimeBalance = allTime.totalCollection - allTime.totalDonation;
 
           return StreamBuilder<List<AppUser>>(
             stream: UserRepository.instance.watchMembers(),
             builder: (context, membersSnap) {
               final members = membersSnap.data ?? [];
-              final memberCount = members
-                  .where((m) =>
-                      m.role == UserRole.member ||
-                      m.role == UserRole.collector)
-                  .length;
+              final memberCount = members.countMemberEligibleUsers();
 
               return StreamBuilder<List<DonationRecord>>(
                 stream: DonationRepository.instance.watchRecent(limit: 8),
@@ -96,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: _StatChip(
                                   label: 'মোট কালেকশন',
                                   value: Formatters.money(
-                                      summary.totalCollection),
+                                      allTime.totalCollection),
                                   filled: true,
                                 ),
                               ),
@@ -105,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: _StatChip(
                                   label: 'মোট ডোনেশন',
                                   value: Formatters.money(
-                                      summary.totalDonation),
+                                      allTime.totalDonation),
                                   valueColor: AppColors.secondary,
                                 ),
                               ),
@@ -113,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Expanded(
                                 child: _StatChip(
                                   label: 'বর্তমান ব্যালেন্স',
-                                  value: Formatters.money(balance),
+                                  value: Formatters.money(allTimeBalance),
                                   valueColor: AppColors.primary,
                                 ),
                               ),
@@ -139,7 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: _StatChip(
                                   label: 'এই মাসের কালেকশন',
                                   value: Formatters.money(
-                                      summary.thisMonthCollection),
+                                      yearSummary.thisMonthCollection),
                                   valueColor: AppColors.secondaryDark,
                                 ),
                               ),
@@ -274,7 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 SizedBox(
                                   height: 180,
                                   child: _MonthlyChart(
-                                    values: summary.monthlyCollections,
+                                    values: yearSummary.monthlyCollections,
                                   ),
                                 ),
                                 Text(
@@ -361,6 +368,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   );
                 },
               );
+            },
+          );
             },
           );
         },

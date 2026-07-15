@@ -31,12 +31,19 @@ class AppUser {
 
   String get uniqueId => phone;
   bool get isActive => status == 'active';
+  bool get isMemberCountEligible => isActive && switch (role) {
+        UserRole.member || UserRole.collector || UserRole.superAdmin => true,
+      };
 
   String get roleLabel => switch (role) {
         UserRole.superAdmin => 'সুপার অ্যাডমিন',
         UserRole.collector => 'কালেক্টর',
         UserRole.member => 'মেম্বার',
       };
+}
+
+extension AppUserListX on Iterable<AppUser> {
+  int countMemberEligibleUsers() => where((user) => user.isMemberCountEligible).length;
 }
 
 class DonationRecord {

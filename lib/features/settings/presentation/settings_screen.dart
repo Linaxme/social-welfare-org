@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/validators.dart';
 import '../../../shared/data/app_session.dart';
 import '../../../shared/data/org_settings.dart';
+import '../../../shared/data/theme_provider.dart';
 import '../../../shared/services/auth_service.dart';
 import '../../../shared/widgets/app_page_header.dart';
 
@@ -40,16 +42,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _saveOrgName() {
+    if (_orgNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('সংগঠনের নাম দিন')),
+      );
+      return;
+    }
     _settings.updateOrgName(_orgNameController.text);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('সংগঠনের নাম সংরক্ষিত হয়েছে')),
     );
   }
 
+  void _toggleTheme(BuildContext context) {
+    ThemeProvider.instance.toggleTheme();
+  }
+
   void _showChangePasswordSheet() {
     final current = TextEditingController();
     final next = TextEditingController();
     final confirm = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet<void>(
       context: context,
@@ -62,71 +75,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
             top: 20,
             bottom: MediaQuery.viewInsetsOf(ctx).bottom + 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'পাসওয়ার্ড পরিবর্তন',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: current,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'বর্তমান পাসওয়ার্ড'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: next,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'নতুন পাসওয়ার্ড'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirm,
-                obscureText: true,
-                decoration:
-                    const InputDecoration(labelText: 'নতুন পাসওয়ার্ড নিশ্চিত করুন'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (next.text.isEmpty || next.text != confirm.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('নতুন পাসওয়ার্ড মিলছে না'),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'পাসওয়ার্ড পরিবর্তন',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                    );
-                    return;
-                  }
-                  try {
-                    await AuthService.instance.changePassword(
-                      currentPassword: current.text,
-                      newPassword: next.text,
-                    );
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('পাসওয়ার্ড আপডেট হয়েছে')),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: current,
+                  obscureText: true,
+                  validator: Validators.password,
+                  decoration: const InputDecoration(labelText: 'বর্তমান পাসওয়ার্ড'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: next,
+                  obscureText: true,
+                  validator: Validators.password,
+                  decoration: const InputDecoration(labelText: 'নতুন পাসওয়ার্ড'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: confirm,
+                  obscureText: true,
+                  validator: (v) => Validators.confirmPassword(v, next.text),
+                  decoration:
+                      const InputDecoration(labelText: 'নতুন পাসওয়ার্ড নিশ্চিত করুন'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    try {
+                      await AuthService.instance.changePassword(
+                        currentPassword: current.text,
+                        newPassword: next.text,
                       );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('পাসওয়ার্ড আপডেট হয়েছে')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('$e'.replaceFirst('Exception: ', '')),
+                          ),
+                        );
+                      }
                     }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text('$e'.replaceFirst('Exception: ', '')),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: const Text('সংরক্ষণ'),
-              ),
-            ],
+                  },
+                  child: const Text('সংরক্ষণ'),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -267,6 +279,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SectionTitle(title: 'অ্যাপ'),
           _SettingsCard(
             children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.dark_mode_outlined, color: AppColors.primary),
+                title: const Text('ডার্ক মোড'),
+                subtitle: const Text('অন্ধকার থিম ব্যবহার করুন'),
+                activeThumbColor: AppColors.primary,
+                value: ThemeProvider.instance.isDark,
+                onChanged: (value) {
+                  _toggleTheme(context);
+                },
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.info_outline, color: AppColors.primary),
                 title: const Text('অ্যাপ সম্পর্কে'),

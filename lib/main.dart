@@ -8,10 +8,16 @@ import 'shared/data/app_session.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  await AppSession.instance.start();
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await AppSession.instance.start();
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
+  }
+
   runApp(
     const ProviderScope(
       child: SomitiApp(),

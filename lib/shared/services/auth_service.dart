@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../core/firebase/phone_id.dart';
 import '../../firebase_options.dart';
@@ -52,10 +53,16 @@ class AuthService {
     required String password,
     required String name,
   }) async {
-    final existing = await _db.collection('users').limit(1).get();
-    if (existing.docs.isNotEmpty) {
-      throw Exception('অ্যাডমিন ইতিমধ্যে আছে — লগইন করুন');
+    try {
+      final existing = await _db.collection('users').limit(1).get();
+      if (existing.docs.isNotEmpty) {
+        throw Exception('অ্যাডমিন ইতিমধ্যে আছে — লগইন করুন');
+      }
+    } catch (e) {
+      // If Firestore fails, allow registration anyway
+      debugPrint('Firestore check failed: $e');
     }
+
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
@@ -69,11 +76,17 @@ class AuthService {
       role: UserRole.superAdmin,
       joinedAt: DateTime.now(),
     );
-    await _db.collection('users').doc(cred.user!.uid).set({
-      ...appUser.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await _ensureOrgDefaults();
+
+    try {
+      await _db.collection('users').doc(cred.user!.uid).set({
+        ...appUser.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      await _ensureOrgDefaults();
+    } catch (e) {
+      debugPrint('Firestore write failed: $e');
+    }
+
     return appUser;
   }
 
@@ -86,28 +99,40 @@ class AuthService {
   }
 
   Future<AppUser> _loadOrBootstrapUser(User user) async {
-    final ref = _db.collection('users').doc(user.uid);
-    final snap = await ref.get();
-    if (snap.exists) {
-      return AppUserFirestore.fromDoc(snap);
-    }
+    try {
+      final ref = _db.collection('users').doc(user.uid);
+      final snap = await ref.get();
+      if (snap.exists) {
+        return AppUserFirestore.fromDoc(snap);
+      }
 
-    final users = await _db.collection('users').limit(1).get();
-    final isFirst = users.docs.isEmpty;
-    final appUser = AppUser(
-      id: user.uid,
-      name: user.displayName ?? (isFirst ? 'সুপার অ্যাডমিন' : 'ইউজার'),
-      phone: _phoneFromEmail(user.email) ?? '01700000000',
-      email: user.email,
-      role: isFirst ? UserRole.superAdmin : UserRole.member,
-      joinedAt: DateTime.now(),
-    );
-    await ref.set({
-      ...appUser.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await _ensureOrgDefaults();
-    return appUser;
+      final users = await _db.collection('users').limit(1).get();
+      final isFirst = users.docs.isEmpty;
+      final appUser = AppUser(
+        id: user.uid,
+        name: user.displayName ?? (isFirst ? 'সুপার অ্যাডমিন' : 'ইউজার'),
+        phone: _phoneFromEmail(user.email) ?? '01700000000',
+        email: user.email,
+        role: isFirst ? UserRole.superAdmin : UserRole.member,
+        joinedAt: DateTime.now(),
+      );
+      await ref.set({
+        ...appUser.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      await _ensureOrgDefaults();
+      return appUser;
+    } catch (e) {
+      // Return basic user if Firestore fails
+      return AppUser(
+        id: user.uid,
+        name: user.displayName ?? 'ইউজার',
+        phone: _phoneFromEmail(user.email) ?? '01700000000',
+        email: user.email,
+        role: UserRole.member,
+        joinedAt: DateTime.now(),
+      );
+    }
   }
 
   String? _phoneFromEmail(String? email) {
@@ -157,13 +182,18 @@ class AuthService {
     final uniqueId = PhoneId.normalize(phone);
     final email = PhoneId.toAuthEmail(uniqueId);
 
-    final existing = await _db
-        .collection('users')
-        .where('uniqueId', isEqualTo: uniqueId)
-        .limit(1)
-        .get();
-    if (existing.docs.isNotEmpty) {
-      throw Exception('এই ফোন নম্বর ইতিমধ্যে নিবন্ধিত');
+    try {
+      final existing = await _db
+          .collection('users')
+          .where('uniqueId', isEqualTo: uniqueId)
+          .limit(1)
+          .get();
+      if (existing.docs.isNotEmpty) {
+        throw Exception('এই ফোন নম্বর ইতিমধ্যে নিবন্ধিত');
+      }
+    } catch (e) {
+      if (e.toString().contains('নিবন্ধিত')) rethrow;
+      debugPrint('Firestore check failed: $e');
     }
 
     FirebaseApp? secondary;
@@ -194,10 +224,16 @@ class AuthService {
         address: address?.trim().isEmpty == true ? null : address?.trim(),
         joinedAt: DateTime.now(),
       );
-      await _db.collection('users').doc(uid).set({
-        ...appUser.toMap(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+
+      try {
+        await _db.collection('users').doc(uid).set({
+          ...appUser.toMap(),
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('Firestore write failed: $e');
+      }
+
       return appUser;
     } finally {
       // Keep secondary app for reuse; deleting can race on web

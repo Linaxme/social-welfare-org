@@ -13,7 +13,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  int _year = 2026;
+  int _year = DateTime.now().year;
   bool _busy = false;
 
   Future<void> _run(Future<void> Function() action) async {
@@ -34,6 +34,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // Year selector
               Text(
                 'বছর',
                 style: Theme.of(context).textTheme.labelLarge,
@@ -41,7 +42,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 8),
               DropdownButtonFormField<int>(
                 initialValue: _year,
-                items: [2024, 2025, 2026]
+                items: [2024, 2025, 2026, 2027]
                     .map(
                       (y) => DropdownMenuItem(
                         value: y,
@@ -54,49 +55,90 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              Text(
-                'এক্সপোর্ট',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+
+              // ─── বার্ষিক সারাংশ ───
+              _SectionTitle('বার্ষিক সারাংশ'),
+              _ExportRow(
+                icon: Icons.summarize_outlined,
+                title: 'বার্ষিক সারাংশ',
+                onPdf: () => _run(
+                  () => ReportExportService.exportYearlySummaryPdf(
+                    context,
+                    year: _year,
+                  ),
+                ),
+                onExcel: () => _run(
+                  () => ReportExportService.exportYearlySummaryExcel(
+                    context,
+                    year: _year,
+                  ),
+                ),
               ),
-              const SizedBox(height: 12),
-              _ReportTile(
+              const SizedBox(height: 16),
+
+              // ─── মেম্বার ───
+              _SectionTitle('মেম্বার'),
+              _ExportRow(
                 icon: Icons.people_outline,
                 title: 'মেম্বার তালিকা',
-                subtitle: 'Excel (.xlsx)',
-                onTap: () => _run(
+                onPdf: () => _run(
+                  () => ReportExportService.exportMembersPdf(context),
+                ),
+                onExcel: () => _run(
                   () => ReportExportService.exportMembersExcel(context),
                 ),
               ),
-              _ReportTile(
+              const SizedBox(height: 16),
+
+              // ─── কালেকশন ───
+              _SectionTitle('কালেকশন'),
+              _ExportRow(
                 icon: Icons.payments_outlined,
-                title: 'মাসিক কালেকশন শিট',
-                subtitle: 'Excel — নির্বাচিত বছর',
-                onTap: () => _run(
+                title: 'কালেকশন তালিকা',
+                subtitle: 'নির্বাচিত বছর',
+                onPdf: () => _run(
+                  () => ReportExportService.exportCollectionsPdf(
+                    context,
+                    year: _year,
+                  ),
+                ),
+                onExcel: () => _run(
                   () => ReportExportService.exportCollectionsExcel(
                     context,
                     year: _year,
                   ),
                 ),
               ),
-              _ReportTile(
+              _ExportRow(
                 icon: Icons.bar_chart_outlined,
                 title: 'মাসিক কালেকশন সারাংশ',
-                subtitle: 'PDF — মাস অনুযায়ী',
-                onTap: () => _run(
+                subtitle: 'মাস অনুযায়ী',
+                onPdf: () => _run(
                   () => ReportExportService.exportMonthlyCollectionPdf(
                     context,
                     year: _year,
                   ),
                 ),
+                onExcel: () => _run(
+                  () => ReportExportService.exportMonthlyCollectionExcel(
+                    context,
+                    year: _year,
+                  ),
+                ),
               ),
-              _ReportTile(
+              const SizedBox(height: 16),
+
+              // ─── সাহায্য ───
+              _SectionTitle('সাহায্য বিতরণ'),
+              _ExportRow(
                 icon: Icons.volunteer_activism_outlined,
                 title: 'সাহায্য বিতরণ রিপোর্ট',
-                subtitle: 'PDF',
-                onTap: () =>
-                    _run(() => ReportExportService.exportHelpPdf(context)),
+                onPdf: () => _run(
+                  () => ReportExportService.exportHelpPdf(context),
+                ),
+                onExcel: () => _run(
+                  () => ReportExportService.exportHelpExcel(context),
+                ),
               ),
             ],
           ),
@@ -111,18 +153,39 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 }
 
-class _ReportTile extends StatelessWidget {
-  const _ReportTile({
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+      ),
+    );
+  }
+}
+
+class _ExportRow extends StatelessWidget {
+  const _ExportRow({
     required this.icon,
     required this.title,
-    required this.subtitle,
-    required this.onTap,
+    this.subtitle,
+    required this.onPdf,
+    required this.onExcel,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+  final String? subtitle;
+  final VoidCallback onPdf;
+  final VoidCallback onExcel;
 
   @override
   Widget build(BuildContext context) {
@@ -138,9 +201,22 @@ class _ReportTile extends StatelessWidget {
           child: Icon(icon, color: AppColors.primary),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.download_outlined),
-        onTap: onTap,
+        subtitle: subtitle != null ? Text(subtitle!) : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+              tooltip: 'PDF',
+              onPressed: onPdf,
+            ),
+            IconButton(
+              icon: const Icon(Icons.table_chart, color: Colors.green),
+              tooltip: 'Excel',
+              onPressed: onExcel,
+            ),
+          ],
+        ),
       ),
     );
   }

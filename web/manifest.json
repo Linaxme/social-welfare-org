@@ -1,11 +1,11 @@
 {
-    "name": "হিলফুল ফুযুল",
-    "short_name": "হিলফুল ফুযুল",
+    "name": "Somiti - সমিতি",
+    "short_name": "Somiti",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FAFAF8",
     "theme_color": "#0A6B4A",
-    "description": "হিলফুল ফুযুল — সমাজ কল্যাণ ও সাহায্য সংগঠন",
+    "description": "Somiti — সংগঠনের হিসাব ও ডোনেশন ম্যানেজমেন্ট",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
