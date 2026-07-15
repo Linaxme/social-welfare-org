@@ -35,6 +35,19 @@ class MemberProfileScreen extends StatelessWidget {
     return AppPageScaffold(
       title: 'মেম্বার প্রোফাইল',
       actions: [
+        if (AppSession.instance.isSuperAdmin)
+          FutureBuilder<AppUser?>(
+            future: UserRepository.instance.getById(memberId),
+            builder: (context, userSnap) {
+              return IconButton(
+                icon: const Icon(Icons.badge_outlined),
+                onPressed: userSnap.data != null
+                    ? () => _showChangeRoleDialog(context, userSnap.data!)
+                    : null,
+                tooltip: 'রোল পরিবর্তন',
+              );
+            },
+          ),
         if (canEdit)
           IconButton(
             icon: const Icon(Icons.edit_outlined),
@@ -93,6 +106,23 @@ class MemberProfileScreen extends StatelessWidget {
                           Formatters.phone(member.phone),
                           style:
                               const TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getRoleColor(member.role),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            member.roleLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                         if (member.nidNumber != null &&
                             member.nidNumber!.isNotEmpty) ...[
@@ -251,6 +281,21 @@ class MemberProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  void _showChangeRoleDialog(BuildContext context, AppUser member) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _ChangeRoleDialog(member: member),
+    );
+  }
+
+  Color _getRoleColor(UserRole role) {
+    return switch (role) {
+      UserRole.superAdmin => const Color(0xFFD32F2F),
+      UserRole.collector => const Color(0xFF1976D2),
+      UserRole.member => const Color(0xFF388E3C),
+    };
+  }
 }
 
 class _StatBox extends StatelessWidget {
@@ -288,5 +333,174 @@ class _StatBox extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _ChangeRoleDialog extends StatefulWidget {
+  const _ChangeRoleDialog({required this.member});
+
+  final AppUser member;
+
+  @override
+  State<_ChangeRoleDialog> createState() => _ChangeRoleDialogState();
+}
+
+class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
+  late UserRole _selectedRole;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRole = widget.member.role;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'রোল পরিবর্তন করুন',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${widget.member.name} এর রোল পরিবর্তন করুন',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
+          ...[
+            UserRole.member,
+            UserRole.collector,
+            UserRole.superAdmin,
+          ].map((role) {
+            final isCurrentRole = _selectedRole == role;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: _isLoading ? null : () => setState(() => _selectedRole = role),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isCurrentRole ? AppColors.primary : Colors.grey.shade300,
+                      width: isCurrentRole ? 2 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: isCurrentRole ? AppColors.primaryLight : Colors.transparent,
+                  ),
+                  child: Row(
+                    children: [
+                      Radio<UserRole>(
+                        value: role,
+                        groupValue: _selectedRole,
+                        onChanged: _isLoading ? null : (value) {
+                          if (value != null) {
+                            setState(() => _selectedRole = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _getRoleLabel(role),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _getRoleDescription(role),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : () => context.pop(),
+                  child: const Text('বাতিল'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isLoading || _selectedRole == widget.member.role
+                      ? null
+                      : _updateRole,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('সংরক্ষণ করুন'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateRole() async {
+    setState(() => _isLoading = true);
+    try {
+      await UserRepository.instance.updateUserRole(
+        userId: widget.member.id,
+        newRole: _selectedRole,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('রোল সফলভাবে পরিবর্তন করা হয়েছে')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ত্রুটি: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _getRoleLabel(UserRole role) {
+    return switch (role) {
+      UserRole.superAdmin => 'সুপার অ্যাডমিন',
+      UserRole.collector => 'কালেক্টর',
+      UserRole.member => 'মেম্বার',
+    };
+  }
+
+  String _getRoleDescription(UserRole role) {
+    return switch (role) {
+      UserRole.superAdmin => 'সম্পূর্ণ অ্যাক্সেস - সব কিছু পরিচালনা করতে পারবেন',
+      UserRole.collector => 'কালেকশন রেকর্ড এবং ডেটা ম্যানেজমেন্ট',
+      UserRole.member => 'শুধুমাত্র দেখার অ্যাক্সেস',
+    };
   }
 }

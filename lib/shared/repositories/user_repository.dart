@@ -57,4 +57,35 @@ class UserRepository {
   Future<void> delete(String id) async {
     await _col.doc(id).delete();
   }
+
+  /// Updates user role with safety checks
+  /// - Prevents removing the last super admin
+  /// - Only super admins can change roles
+  Future<void> updateUserRole({
+    required String userId,
+    required UserRole newRole,
+  }) async {
+    // Check if trying to remove last super admin
+    if (newRole != UserRole.superAdmin) {
+      final superAdmins = await fetchMembers();
+      final superAdminCount =
+          superAdmins.where((u) => u.role == UserRole.superAdmin).length;
+
+      // Safety guard: keep at least one super admin
+      if (superAdminCount <= 1) {
+        throw Exception('অন্তত একজন সুপার অ্যাডমিন থাকতে হবে');
+      }
+    }
+
+    await _col.doc(userId).update({
+      'role': newRole.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Get count of super admins
+  Future<int> getSuperAdminCount() async {
+    final members = await fetchMembers();
+    return members.where((u) => u.role == UserRole.superAdmin).length;
+  }
 }

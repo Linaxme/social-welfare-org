@@ -33,6 +33,7 @@ class AppSession extends ChangeNotifier {
   bool get isReady => _ready;
   bool get isLoggedIn => _user != null;
   bool get isAdmin => _user?.role == UserRole.superAdmin;
+  bool get isSuperAdmin => _user?.role == UserRole.superAdmin;
   bool get isCollector => _user?.role == UserRole.collector;
   bool get isMember => _user?.role == UserRole.member;
   bool get canRecordDonation => isAdmin || isCollector;
