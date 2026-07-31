@@ -6,15 +6,30 @@ class OrgSettings extends ChangeNotifier {
   static final OrgSettings instance = OrgSettings._();
 
   String orgName = 'হিলফুল ফুযুল কেশবপুর পশ্চিমপাড়া';
+  String apkDownloadUrl =
+      'https://github.com/Linaxme/social-welfare-org/releases/download/v1.0.0.1/hilful-fuzul.v1.0.0.1.apk';
   bool collectorCanEditProfile = false;
   bool collectorCanEnterDonation = false;
 
   void applyFromMap(Map<String, dynamic> d) {
     orgName = d['orgName'] as String? ?? orgName;
+    apkDownloadUrl = d['apkDownloadUrl'] as String? ?? apkDownloadUrl;
     collectorCanEditProfile = d['collectorCanEditProfile'] as bool? ?? false;
     collectorCanEnterDonation =
         d['collectorCanEnterDonation'] as bool? ?? false;
     notifyListeners();
+  }
+
+  Future<void> updateApkDownloadUrl(String url) async {
+    apkDownloadUrl = url.trim();
+    notifyListeners();
+    await FirebaseFirestore.instance
+        .collection('org_settings')
+        .doc('global')
+        .set({
+      'apkDownloadUrl': apkDownloadUrl,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> updateOrgName(String name) async {

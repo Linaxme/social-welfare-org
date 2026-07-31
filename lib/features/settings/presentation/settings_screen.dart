@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
@@ -441,6 +442,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _downloadApk() async {
+    final url = OrgSettings.instance.apkDownloadUrl;
+    if (url.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('এপিকে ডাউনলোড লিঙ্ক এখনো যুক্ত করা হয়নি'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(url.trim());
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('লিঙ্ক খুলতে ব্যর্থ হয়েছে')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ত্রুটি: $e')),
+        );
+      }
+    }
+  }
+
+  void _showEditApkUrlDialog() {
+    final controller = TextEditingController(text: OrgSettings.instance.apkDownloadUrl);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('এপিকে ডাউনলোড লিঙ্ক সম্পাদনা'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'https://... (এপিকে ডাউনলোডের লিঙ্ক)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('বাতিল'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              OrgSettings.instance.updateApkDownloadUrl(controller.text);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('ডাউনলোড লিঙ্ক আপডেট করা হয়েছে')),
+              );
+            },
+            child: const Text('সংরক্ষণ'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLanguagePicker() {
     final s = AppStrings.current;
     final currentLocale = LocaleProvider.instance.localeCode;
@@ -669,6 +733,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Text(s.aboutApp),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showAbout,
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.android_rounded, color: AppColors.primary, size: 26),
+                title: const Text(
+                  'অ্যান্ড্রয়েড এপিকে ডাউনলোড',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  OrgSettings.instance.apkDownloadUrl.isNotEmpty
+                      ? 'মোবাইলে ইনস্টল করতে সরাসরি এপিকে ফাইল ডাউনলোড করুন'
+                      : 'এপিকে ডাউনলোড লিঙ্ক যুক্ত করা হচ্ছে...',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isAdmin)
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                        onPressed: _showEditApkUrlDialog,
+                        tooltip: 'লিঙ্ক সেট করুন',
+                      ),
+                    const Icon(Icons.download_rounded, color: AppColors.primary),
+                  ],
+                ),
+                onTap: _downloadApk,
               ),
             ],
           ),
