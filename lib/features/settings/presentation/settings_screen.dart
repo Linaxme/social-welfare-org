@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/data/app_session.dart';
+import '../../../shared/data/locale_provider.dart';
 import '../../../shared/data/org_settings.dart';
 import '../../../shared/data/theme_provider.dart';
+import '../../../shared/models/models.dart';
+import '../../../shared/repositories/donation_repository.dart';
 import '../../../shared/services/auth_service.dart';
 import '../../../shared/widgets/app_page_header.dart';
+import '../../../shared/widgets/widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -42,23 +49,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _saveOrgName() {
+    final s = AppStrings.current;
     if (_orgNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('সংগঠনের নাম দিন')),
+        SnackBar(content: Text(s.enterOrgName)),
       );
       return;
     }
     _settings.updateOrgName(_orgNameController.text);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('সংগঠনের নাম সংরক্ষিত হয়েছে')),
+      SnackBar(content: Text(s.orgNameSaved)),
     );
   }
 
-  void _toggleTheme(BuildContext context) {
-    ThemeProvider.instance.toggleTheme();
-  }
-
   void _showChangePasswordSheet() {
+    final s = AppStrings.current;
     final current = TextEditingController();
     final next = TextEditingController();
     final confirm = TextEditingController();
@@ -82,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'পাসওয়ার্ড পরিবর্তন',
+                  s.changePassword,
                   style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -92,14 +97,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: current,
                   obscureText: true,
                   validator: Validators.password,
-                  decoration: const InputDecoration(labelText: 'বর্তমান পাসওয়ার্ড'),
+                  decoration: InputDecoration(labelText: s.currentPassword),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: next,
                   obscureText: true,
                   validator: Validators.password,
-                  decoration: const InputDecoration(labelText: 'নতুন পাসওয়ার্ড'),
+                  decoration: InputDecoration(labelText: s.newPassword),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -107,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   obscureText: true,
                   validator: (v) => Validators.confirmPassword(v, next.text),
                   decoration:
-                      const InputDecoration(labelText: 'নতুন পাসওয়ার্ড নিশ্চিত করুন'),
+                      InputDecoration(labelText: s.confirmPassword),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
@@ -121,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('পাসওয়ার্ড আপডেট হয়েছে')),
+                          SnackBar(content: Text(s.passwordUpdated)),
                         );
                       }
                     } catch (e) {
@@ -135,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     }
                   },
-                  child: const Text('সংরক্ষণ'),
+                  child: Text(s.save),
                 ),
               ],
             ),
@@ -146,50 +151,375 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showAbout() {
-    showAboutDialog(
+    final s = AppStrings.current;
+    final org = OrgSettings.instance.orgName;
+
+    showDialog<void>(
       context: context,
-      applicationName: 'সোমিতি',
-      applicationVersion: '১.০.০',
-      applicationIcon: const Icon(
-        Icons.diversity_3_rounded,
-        color: AppColors.primary,
-        size: 40,
-      ),
-      children: const [
-        Text(
-          'সমাজ কল্যাণ সংগঠনের হিসাব, ডোনেশন ও সাহায্য বিতরণ ম্যানেজমেন্ট অ্যাপ।',
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            color: Theme.of(ctx).colorScheme.surface,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Header Banner ──
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF007A52), Color(0xFF004D34)],
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.diversity_3_rounded,
+                            color: Colors.white,
+                            size: 38,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          org.isNotEmpty ? org : 'সমিতি ও সংগঠন ম্যানেজমেন্ট',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: const Text(
+                            'Version 1.0.0.1 (Final Release)',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Content ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Bengali Comprehensive Section
+                        const Text(
+                          'স্মার্ট সমিতি ও সংগঠন প্ল্যাটফর্ম',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'সমিতি ও সমাজকল্যাণ সংস্থা ম্যানেজমেন্ট সিস্টেম হল একটি আধুনিক, সর্বাধুনিক প্রযুক্তিতে তৈরি ডিজিটাল সমাধান। এটি সমিতি, অলাভজনক প্রতিষ্ঠান, ক্লাব ও সামাজিক ফান্ডসমূহের দৈনন্দিন কালেকশন, সদস্য ডিরেক্টরি এবং অটোমেটেড অনুদান সংগ্রহ প্রক্রিয়াকে সহজ, সুরক্ষিত ও স্বচ্ছ করার উদ্দেশ্যে নির্মিত।',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.45,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                '📌 মূল সুবিধাসমূহ:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                '• ডিজিটাল কালেকশন এন্ট্রি ও অটোমেটেড পিডিএফ রিসিট\n'
+                                '• রিয়েল-টাইম আয়-ব্যয়, মাসিক গ্রাফ ও ব্যালেন্স সামারি\n'
+                                '• সদস্য ডিরেক্টরি ও রোল-ভিত্তিক ডাটা প্রাইভেসি\n'
+                                '• সেরা দাতা স্লাইডার ও র‍্যাঙ্কিং লিডারবোর্ড',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  height: 1.4,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // English Detailed Section
+                        const Text(
+                          'Smart & Automated System (English)',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Somiti & Welfare Organization Management System is an enterprise-grade digital platform engineered to streamline financial tracking, membership directories, collection logging, real-time analytics, and automated PDF receipt printing for societies and non-profit organizations.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+
+                        // Small Subtle Developed By Footer
+                        Center(
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Developed By',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Saif Ahmed Limon',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+
+                              // Compact Contact Row
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    onTap: () {
+                                      Clipboard.setData(
+                                        const ClipboardData(text: 'linaxme@gmail.com'),
+                                      );
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Copied: linaxme@gmail.com'),
+                                        ),
+                                      );
+                                    },
+                                    child: Row(
+                                      children: const [
+                                        Icon(Icons.email_outlined, size: 12, color: AppColors.textSecondary),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'linaxme@gmail.com',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 6),
+                                    child: Text('·', style: TextStyle(color: AppColors.textSecondary)),
+                                  ),
+                                  InkWell(
+                                    onTap: () {
+                                      Clipboard.setData(
+                                        const ClipboardData(text: '+8801826090490'),
+                                      );
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Copied: +88 01826090490'),
+                                        ),
+                                      );
+                                    },
+                                    child: Row(
+                                      children: const [
+                                        Icon(Icons.phone_outlined, size: 12, color: AppColors.textSecondary),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          '+88 01826090490',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Close Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: Text(s.close),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLanguagePicker() {
+    final s = AppStrings.current;
+    final currentLocale = LocaleProvider.instance.localeCode;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                s.language,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.language, color: AppColors.primary),
+              title: const Text('বাংলা'),
+              trailing: currentLocale == 'bn'
+                  ? const Icon(Icons.check, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                LocaleProvider.instance.setLocale(const Locale('bn'));
+                Navigator.pop(ctx);
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.language, color: AppColors.primary),
+              title: Text(s.english),
+              trailing: currentLocale == 'en'
+                  ? const Icon(Icons.check, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                LocaleProvider.instance.setLocale(const Locale('en'));
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
+    final currentLocale = LocaleProvider.instance.localeCode;
+    final currentLangName = currentLocale == 'bn' ? s.bengali : s.english;
+
     return AppTabScaffold(
-      title: 'সেটিংস',
+      title: s.settings,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _SectionTitle(title: 'অ্যাকাউন্ট'),
+          _SectionTitle(title: s.account),
           _SettingsCard(
             children: [
               ListTile(
                 leading: const Icon(Icons.person_outline, color: AppColors.primary),
-                title: const Text('আমার প্রোফাইল'),
+                title: Text(s.myProfileSettings),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/profile'),
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.lock_outline, color: AppColors.primary),
-                title: const Text('পাসওয়ার্ড পরিবর্তন'),
+                title: Text(s.changePassword),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showChangePasswordSheet,
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.logout, color: AppColors.primary),
-                title: const Text('লগআউট'),
+                title: Text(s.logout),
                 onTap: () async {
                   await AppSession.instance.logout();
                   if (context.mounted) context.go('/login');
@@ -197,23 +527,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _SectionTitle(title: 'রিপোর্ট'),
-          _SettingsCard(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.summarize_outlined,
-                    color: AppColors.primary),
-                title: const Text('কাস্টম রিপোর্ট'),
-                subtitle: const Text('Excel / PDF এক্সপোর্ট'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/reports'),
-              ),
-            ],
-          ),
+          if (AppSession.instance.canSeeReports) ...[
+            const SizedBox(height: 16),
+            _SectionTitle(title: s.reportSection),
+            _SettingsCard(
+              children: [
+                if (AppSession.instance.isCollector || AppSession.instance.isAdmin)
+                  ListTile(
+                    leading: const Icon(Icons.history, color: AppColors.primary),
+                    title: Text(s.myCollectionHistory),
+                    subtitle: Text(s.viewCollectionHistory),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/my-collections'),
+                  ),
+                if (AppSession.instance.isCollector || AppSession.instance.isAdmin)
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.summarize_outlined,
+                      color: AppColors.primary),
+                  title: Text(s.customReportExport),
+                  subtitle: Text(s.excelPdfExport),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/reports'),
+                ),
+              ],
+            ),
+          ],
           if (_isAdmin) ...[
             const SizedBox(height: 16),
-            _SectionTitle(title: 'সংগঠন'),
+            _SectionTitle(title: s.organization),
             _SettingsCard(
               children: [
                 Padding(
@@ -222,20 +564,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'সংগঠনের নাম',
+                        s.organizationName,
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _orgNameController,
-                        decoration: const InputDecoration(
-                          hintText: 'সংগঠনের নাম লিখুন',
+                        decoration: InputDecoration(
+                          hintText: s.enterOrgName,
                         ),
                       ),
                       const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _saveOrgName,
-                        child: const Text('নাম সংরক্ষণ'),
+                        child: Text(s.saveName),
                       ),
                     ],
                   ),
@@ -243,9 +585,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _SectionTitle(title: 'কালেক্টর পারমিশন'),
+            _SectionTitle(title: s.collectorPermission),
             Text(
-              'সুপার অ্যাডমিন থেকে কালেক্টরদের ক্ষমতা নিয়ন্ত্রণ করুন',
+              s.collectorPermDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -254,9 +596,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsCard(
               children: [
                 SwitchListTile(
-                  title: const Text('মেম্বার প্রোফাইল এডিট'),
-                  subtitle: const Text(
-                    'কালেক্টর মেম্বারের নাম ও তথ্য সম্পাদনা করতে পারবে',
+                  title: Text(s.memberProfileEdit),
+                  subtitle: Text(
+                    s.memberProfileEditDesc,
                   ),
                   activeThumbColor: AppColors.primary,
                   value: _settings.collectorCanEditProfile,
@@ -264,9 +606,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 SwitchListTile(
-                  title: const Text('সাহায্য / আউটগোয়িং এন্ট্রি'),
-                  subtitle: const Text(
-                    'কালেক্টর সাহায্য বিতরণ রেকর্ড করতে পারবে',
+                  title: Text(s.helpOutgoingEntry),
+                  subtitle: Text(
+                    s.helpOutgoingDesc,
                   ),
                   activeThumbColor: AppColors.primary,
                   value: _settings.collectorCanEnterDonation,
@@ -275,39 +617,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ],
+          if (_isAdmin || AppSession.instance.isCollector) ...[
+            const SizedBox(height: 16),
+            _SectionTitle(title: s.collectorCollectionSummary),
+            _SettingsCard(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.pie_chart_outline, color: AppColors.primary),
+                  title: Text(s.collectorCollectionSummary),
+                  subtitle: Text(s.collectorCollectionSummaryDesc),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/collector-summary'),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
-          _SectionTitle(title: 'অ্যাপ'),
+          _SectionTitle(title: s.appSection),
           _SettingsCard(
             children: [
               SwitchListTile(
                 secondary: const Icon(Icons.dark_mode_outlined, color: AppColors.primary),
-                title: const Text('ডার্ক মোড'),
-                subtitle: const Text('অন্ধকার থিম ব্যবহার করুন'),
+                title: Text(s.darkMode),
+                subtitle: Text(s.darkModeDesc),
                 activeThumbColor: AppColors.primary,
                 value: ThemeProvider.instance.isDark,
                 onChanged: (value) {
-                  _toggleTheme(context);
+                  ThemeProvider.instance.toggleTheme();
                 },
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
+                leading: const Icon(Icons.language, color: AppColors.primary),
+                title: Text(s.language),
+                subtitle: Text(currentLangName),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _showLanguagePicker,
+              ),
+              if (_isAdmin) ...[
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                  title: Text(s.trash),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/trash'),
+                ),
+              ],
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
                 leading: const Icon(Icons.info_outline, color: AppColors.primary),
-                title: const Text('অ্যাপ সম্পর্কে'),
+                title: Text(s.aboutApp),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showAbout,
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              const ListTile(
-                leading: Icon(Icons.language, color: AppColors.primary),
-                title: Text('ভাষা'),
-                subtitle: Text('বাংলা'),
-                trailing: Text(
-                  'শুধু বাংলা',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
               ),
             ],
           ),
@@ -355,3 +716,5 @@ class _SettingsCard extends StatelessWidget {
     );
   }
 }
+
+

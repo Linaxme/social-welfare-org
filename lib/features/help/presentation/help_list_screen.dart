@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/data/app_session.dart';
@@ -50,14 +51,15 @@ class _HelpListScreenState extends State<HelpListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppTabScaffold(
-      title: 'সাহায্য বিতরণ',
+      title: s.helpDistribution,
       floatingActionButton: AppSession.instance.canEnterHelp
           ? FloatingActionButton.extended(
               heroTag: 'add_help_fab',
               onPressed: () => context.push('/help/new'),
               icon: const Icon(Icons.add),
-              label: const Text('নতুন সাহায্য'),
+              label: Text(s.newHelp),
             )
           : null,
       body: Column(
@@ -68,7 +70,7 @@ class _HelpListScreenState extends State<HelpListScreen> {
               controller: _search,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'নাম, ফোন বা এনআইডি দিয়ে খুঁজুন',
+                hintText: s.searchNamePhoneOrNid,
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -90,7 +92,7 @@ class _HelpListScreenState extends State<HelpListScreen> {
               builder: (context, snap) {
                 if (snap.hasError) {
                   return ErrorState(
-                    message: 'ডাটা লোড করা যায়নি। আবার চেষ্টা করুন।',
+                    message: '${s.loading} ${s.retry}',
                     onRetry: () => setState(() {}),
                   );
                 }
@@ -99,8 +101,8 @@ class _HelpListScreenState extends State<HelpListScreen> {
                 }
                 final list = _filter(snap.data!);
                 if (list.isEmpty) {
-                  return const EmptyState(
-                    message: 'কোনো সাহায্য রেকর্ড নেই',
+                  return EmptyState(
+                    message: s.noHelpRecords,
                     icon: Icons.volunteer_activism_outlined,
                   );
                 }
@@ -123,18 +125,34 @@ class _HelpListScreenState extends State<HelpListScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
-                          '${Formatters.shortDate(h.date)} · ${h.reason}',
+                          '${Formatters.shortDate(h.date)} · ${h.reasonLabel}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        trailing: Text(
-                          Formatters.money(h.amount),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              Formatters.money(h.amount),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            if (AppSession.instance.isAdmin) ...[
+                              const SizedBox(width: 4),
+                              GestureDetector(
+                                onTap: () => _confirmDelete(context, h),
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         onTap: () => context.push('/help/${h.id}'),
                       );
@@ -147,5 +165,36 @@ class _HelpListScreenState extends State<HelpListScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(
+      BuildContext context, DisbursementRecord h) async {
+    final s = AppStrings.current;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.moveToTrash),
+        content: Text(s.moveToTrashConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(s.moveToTrash),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await DisbursementRepository.instance.softDelete(h.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.itemMovedToTrash)),
+        );
+      }
+    }
   }
 }

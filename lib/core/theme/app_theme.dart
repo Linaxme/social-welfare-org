@@ -54,7 +54,7 @@ class AppTheme {
     );
 
     final textTheme =
-        GoogleFonts.notoSerifBengaliTextTheme(base.textTheme).apply(
+        GoogleFonts.notoSansBengaliTextTheme(base.textTheme).apply(
       bodyColor: AppColors.textPrimary,
       displayColor: AppColors.textPrimary,
     );
@@ -66,7 +66,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.notoSerifBengali(
+        titleTextStyle: GoogleFonts.notoSansBengali(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -88,7 +88,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.notoSerifBengali(
+          textStyle: GoogleFonts.notoSansBengali(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -102,7 +102,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.notoSerifBengali(
+          textStyle: GoogleFonts.notoSansBengali(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -126,8 +126,8 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         labelStyle:
-            GoogleFonts.notoSerifBengali(color: AppColors.textSecondary),
-        hintStyle: GoogleFonts.notoSerifBengali(color: AppColors.textSecondary),
+            GoogleFonts.notoSansBengali(color: AppColors.textSecondary),
+        hintStyle: GoogleFonts.notoSansBengali(color: AppColors.textSecondary),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.primary,
@@ -163,7 +163,7 @@ class AppTheme {
     );
 
     final textTheme =
-        GoogleFonts.notoSerifBengaliTextTheme(base.textTheme).apply(
+        GoogleFonts.notoSansBengaliTextTheme(base.textTheme).apply(
       bodyColor: AppColors.darkTextPrimary,
       displayColor: AppColors.darkTextPrimary,
     );
@@ -175,7 +175,7 @@ class AppTheme {
         foregroundColor: AppColors.darkTextPrimary,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.notoSerifBengali(
+        titleTextStyle: GoogleFonts.notoSansBengali(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.darkTextPrimary,
@@ -197,7 +197,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.notoSerifBengali(
+          textStyle: GoogleFonts.notoSansBengali(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -211,7 +211,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.notoSerifBengali(
+          textStyle: GoogleFonts.notoSansBengali(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -235,9 +235,9 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         labelStyle:
-            GoogleFonts.notoSerifBengali(color: AppColors.darkTextSecondary),
+            GoogleFonts.notoSansBengali(color: AppColors.darkTextSecondary),
         hintStyle:
-            GoogleFonts.notoSerifBengali(color: AppColors.darkTextSecondary),
+            GoogleFonts.notoSansBengali(color: AppColors.darkTextSecondary),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,

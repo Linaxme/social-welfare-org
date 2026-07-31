@@ -56,6 +56,9 @@ extension DonationFirestore on DonationRecord {
       'paymentMode': paymentMode,
       if (enteredByName != null) 'enteredByName': enteredByName,
       if (enteredBy != null) 'enteredBy': enteredBy,
+      if (enteredById != null) 'enteredById': enteredById,
+      'status': status,
+      if (deletedAt != null) 'deletedAt': Timestamp.fromDate(deletedAt!),
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -70,8 +73,11 @@ extension DonationFirestore on DonationRecord {
       paidAt: (d['paidAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       receiptNo: d['receiptNo'] as String? ?? '',
       note: d['note'] as String?,
-      paymentMode: d['paymentMode'] as String? ?? 'নগদ',
+      paymentMode: d['paymentMode'] as String? ?? 'cash',
       enteredByName: d['enteredByName'] as String?,
+      enteredById: d['enteredById'] as String? ?? d['enteredBy'] as String?,
+      status: d['status'] as String? ?? 'active',
+      deletedAt: (d['deletedAt'] as Timestamp?)?.toDate(),
     );
   }
 }
@@ -89,6 +95,8 @@ extension DisbursementFirestore on DisbursementRecord {
       if (description != null) 'description': description,
       if (enteredByName != null) 'enteredByName': enteredByName,
       if (enteredBy != null) 'enteredBy': enteredBy,
+      'status': status,
+      if (deletedAt != null) 'deletedAt': Timestamp.fromDate(deletedAt!),
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -108,6 +116,8 @@ extension DisbursementFirestore on DisbursementRecord {
       date: (d['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       description: d['description'] as String?,
       enteredByName: d['enteredByName'] as String?,
+      status: d['status'] as String? ?? 'active',
+      deletedAt: (d['deletedAt'] as Timestamp?)?.toDate(),
     );
   }
 }

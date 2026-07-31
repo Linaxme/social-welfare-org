@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/data/app_session.dart';
@@ -15,8 +16,9 @@ class HelpDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppPageScaffold(
-      title: 'সাহায্যের বিবরণ',
+      title: s.helpDetail,
       actions: [
         if (AppSession.instance.isAdmin)
           IconButton(
@@ -32,13 +34,13 @@ class HelpDetailScreen extends StatelessWidget {
           }
           if (snap.hasError) {
             return ErrorState(
-              message: 'রেকর্ড লোড করা যায়নি।',
+              message: s.recordLoadError,
               onRetry: () => Navigator.of(context).pop(),
             );
           }
           final h = snap.data;
           if (h == null) {
-            return const EmptyState(message: 'রেকর্ড পাওয়া যায়নি');
+            return EmptyState(message: s.recordNotFoundMsg);
           }
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -84,15 +86,16 @@ class HelpDetailScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _row('তারিখ', Formatters.shortDate(h.date)),
-                    _row('কারণ', h.reason),
-                    _row('এনআইডি', Formatters.toBnDigits(h.nidNumber)),
-                    _row('ফোন', Formatters.phone(h.phone)),
-                    _row('ঠিকানা', h.address),
+                    _row(s.date, Formatters.shortDate(h.date)),
+                    _row(s.reason, h.reasonLabel),
+                    if (h.nidNumber.isNotEmpty)
+                      _row(s.nidNumber, Formatters.toDigits(h.nidNumber)),
+                    _row(s.phone, Formatters.phone(h.phone)),
+                    _row(s.address, h.address),
                     if (h.description != null && h.description!.isNotEmpty)
-                      _row('বিবরণ', h.description!),
+                      _row(s.descriptionNote, h.description!),
                     if (h.enteredByName != null)
-                      _row('এন্ট্রি করেছেন', h.enteredByName!),
+                      _row(s.entryBy, h.enteredByName!),
                   ],
                 ),
               ),
@@ -121,37 +124,38 @@ class HelpDetailScreen extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context) {
+    final s = AppStrings.current;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('সাহায্য রেকর্ড মুছুন'),
-        content: const Text('আপনি কি নিশ্চিত এই রেকর্ড মুছে ফেলতে চান?'),
+        title: Text(s.moveToTrash),
+        content: Text(s.moveToTrashConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('বাতিল'),
+            child: Text(s.cancel),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await DisbursementRepository.instance.delete(helpId);
+                await DisbursementRepository.instance.softDelete(helpId);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('রেকর্ড মুছে ফেলা হয়েছে')),
+                    SnackBar(content: Text(s.itemMovedToTrash)),
                   );
                   context.pop();
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('ব্যর্থ: $e')),
+                    SnackBar(content: Text('${s.failedPrefix}: $e')),
                   );
                 }
               }
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('মুছুন'),
+            child: Text(s.moveToTrash),
           ),
         ],
       ),

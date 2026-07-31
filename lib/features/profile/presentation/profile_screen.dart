@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/data/app_session.dart';
 import '../../../shared/widgets/app_page_header.dart';
 import '../../../shared/widgets/widgets.dart';
 
-/// Account info only — settings / logout / reports live in Settings tab.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -35,9 +35,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = AppSession.instance.user;
+    final s = AppStrings.current;
 
     return AppPageScaffold(
-      title: 'আমার প্রোফাইল',
+      title: s.myProfile,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -120,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 leading: const Icon(Icons.history, color: AppColors.primary),
-                title: const Text('আমার ডোনেশন হিস্ট্রি'),
+                title: Text(s.myDonationHistory),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/members/${user.id}'),
               ),

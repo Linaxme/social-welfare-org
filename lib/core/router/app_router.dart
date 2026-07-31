@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:somiti_app/features/auth/presentation/login_screen.dart';
 import 'package:somiti_app/features/collections/presentation/add_donation_screen.dart';
+import 'package:somiti_app/features/collections/presentation/collector_history_screen.dart';
 import 'package:somiti_app/features/collections/presentation/collection_history_screen.dart';
+import 'package:somiti_app/features/collections/presentation/edit_donation_screen.dart';
 import 'package:somiti_app/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:somiti_app/features/dashboard/presentation/top_donors_screen.dart';
 import 'package:somiti_app/features/help/presentation/add_help_screen.dart';
 import 'package:somiti_app/features/help/presentation/help_detail_screen.dart';
 import 'package:somiti_app/features/help/presentation/help_list_screen.dart';
@@ -13,9 +16,13 @@ import 'package:somiti_app/features/members/presentation/member_list_screen.dart
 import 'package:somiti_app/features/members/presentation/member_profile_screen.dart';
 import 'package:somiti_app/features/profile/presentation/profile_screen.dart';
 import 'package:somiti_app/features/reports/presentation/reports_screen.dart';
+import 'package:somiti_app/features/settings/presentation/collector_summary_screen.dart';
 import 'package:somiti_app/features/settings/presentation/settings_screen.dart';
 import 'package:somiti_app/features/shell/home_shell.dart';
+import 'package:somiti_app/features/trash/presentation/trash_screen.dart';
 import 'package:somiti_app/shared/data/app_session.dart';
+import 'package:somiti_app/shared/data/locale_provider.dart';
+import 'package:somiti_app/shared/models/models.dart';
 
 final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
 
@@ -23,7 +30,7 @@ GoRouter createRouter() {
   return GoRouter(
     navigatorKey: _rootKey,
     initialLocation: '/login',
-    refreshListenable: AppSession.instance,
+    refreshListenable: Listenable.merge([AppSession.instance, LocaleProvider.instance]),
     redirect: (context, state) {
       final session = AppSession.instance;
       if (!session.isReady) return null;
@@ -102,6 +109,28 @@ GoRouter createRouter() {
         builder: (context, state) => const CollectionHistoryScreen(),
       ),
       GoRoute(
+        path: '/my-collections',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) {
+          final collectorId = state.uri.queryParameters['collectorId'];
+          final collectorName = state.uri.queryParameters['collectorName'];
+          return CollectorHistoryScreen(
+            collectorId: collectorId,
+            collectorName: collectorName,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/collector-summary',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const CollectorSummaryScreen(),
+      ),
+      GoRoute(
+        path: '/top-donors',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const TopDonorsScreen(),
+      ),
+      GoRoute(
         path: '/members/new',
         parentNavigatorKey: _rootKey,
         builder: (context, state) => const AddMemberScreen(),
@@ -131,6 +160,14 @@ GoRouter createRouter() {
         },
       ),
       GoRoute(
+        path: '/donation/:id/edit',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) {
+          final donation = state.extra as DonationRecord;
+          return EditDonationScreen(donation: donation);
+        },
+      ),
+      GoRoute(
         path: '/help/new',
         parentNavigatorKey: _rootKey,
         builder: (context, state) => const AddHelpScreen(),
@@ -142,6 +179,11 @@ GoRouter createRouter() {
           final id = state.pathParameters['id']!;
           return HelpDetailScreen(helpId: id);
         },
+      ),
+      GoRoute(
+        path: '/trash',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const TrashScreen(),
       ),
     ],
   );

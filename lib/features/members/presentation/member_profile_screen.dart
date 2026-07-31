@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/data/app_session.dart';
@@ -19,8 +20,9 @@ class MemberProfileScreen extends StatelessWidget {
   Map<String, int> _monthlyBreakdown(List<DonationRecord> donations) {
     final map = <String, int>{};
     for (final d in donations) {
+      final names = AppStrings.current.monthNames;
       final key =
-          '${Formatters.monthNamesBn[d.paidAt.month - 1]} ${Formatters.toBnDigits('${d.paidAt.year}')}';
+          '${names[d.paidAt.month - 1]} ${Formatters.toDigits('${d.paidAt.year}')}';
       map[key] = (map[key] ?? 0) + d.amount;
     }
     return map;
@@ -28,12 +30,49 @@ class MemberProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
+    final isOwnProfile = memberId == AppSession.instance.user.id;
+    final canView = AppSession.instance.isAdmin ||
+        AppSession.instance.isCollector ||
+        isOwnProfile;
+
+    if (!canView) {
+      return AppPageScaffold(
+        title: s.memberProfile,
+        showBack: true,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 56,
+                  color: AppColors.textSecondary.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'অন্য সদস্যের প্রোফাইল দেখার অনুমতি নেই',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final canEdit = AppSession.instance.canEditMemberProfile ||
         AppSession.instance.isAdmin;
     final canDonate = AppSession.instance.canRecordDonation;
 
     return AppPageScaffold(
-      title: 'মেম্বার প্রোফাইল',
+      title: s.memberProfile,
       actions: [
         if (AppSession.instance.isSuperAdmin)
           FutureBuilder<AppUser?>(
@@ -44,7 +83,7 @@ class MemberProfileScreen extends StatelessWidget {
                 onPressed: userSnap.data != null
                     ? () => _showChangeRoleDialog(context, userSnap.data!)
                     : null,
-                tooltip: 'রোল পরিবর্তন',
+                tooltip: s.changeRole,
               );
             },
           ),
@@ -67,13 +106,13 @@ class MemberProfileScreen extends StatelessWidget {
           }
           if (userSnap.hasError) {
             return ErrorState(
-              message: 'মেম্বার তথ্য লোড করা যায়নি।',
+              message: '${s.loading} ${s.retry}',
               onRetry: () => Navigator.of(context).pop(),
             );
           }
           final member = userSnap.data;
           if (member == null) {
-            return const EmptyState(message: 'মেম্বার পাওয়া যায়নি');
+            return EmptyState(message: '${s.memberRole} ${s.recordNotFound}');
           }
 
           return StreamBuilder<List<DonationRecord>>(
@@ -107,6 +146,15 @@ class MemberProfileScreen extends StatelessWidget {
                           style:
                               const TextStyle(color: AppColors.textSecondary),
                         ),
+                        if (member.email != null &&
+                            member.email!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            member.email!,
+                            style: const TextStyle(
+                                color: AppColors.textSecondary, fontSize: 13),
+                          ),
+                        ],
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -128,7 +176,7 @@ class MemberProfileScreen extends StatelessWidget {
                             member.nidNumber!.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(
-                            'এনআইডি: ${Formatters.toBnDigits(member.nidNumber!)}',
+                            '${s.nidNumber}: ${Formatters.toDigits(member.nidNumber!)}',
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
@@ -152,7 +200,7 @@ class MemberProfileScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: _StatBox(
-                                label: 'মোট ডোনেশন',
+                                label: s.totalDonation,
                                 value:
                                     Formatters.money(member.totalDonation),
                               ),
@@ -160,8 +208,8 @@ class MemberProfileScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: _StatBox(
-                                label: 'মোট বার',
-                                value: Formatters.toBnDigits(
+                                label: s.totalTimes,
+                                value: Formatters.toDigits(
                                     '${member.donationCount}'),
                               ),
                             ),
@@ -177,11 +225,11 @@ class MemberProfileScreen extends StatelessWidget {
                         onPressed: () => context
                             .push('/donation/new?donorId=$memberId'),
                         icon: const Icon(Icons.add_card),
-                        label: const Text('নতুন ডোনেশন এন্ট্রি'),
+                        label: Text(s.newDonationEntry),
                       ),
                     ),
                   if (monthly.isNotEmpty) ...[
-                    const SectionHeader(title: 'মাসভিত্তিক সারাংশ'),
+                    SectionHeader(title: s.monthlySummary),
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
@@ -204,9 +252,9 @@ class MemberProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ],
-                  const SectionHeader(title: 'ডোনেশন হিস্ট্রি'),
+                  SectionHeader(title: s.donationHistory),
                   if (history.isEmpty)
-                    const EmptyState(message: 'এখনো কোনো ডোনেশন নেই')
+                    EmptyState(message: s.noDonationsYet)
                   else
                     Container(
                       margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -225,10 +273,62 @@ class MemberProfileScreen extends StatelessWidget {
                                 '${Formatters.shortDate(history[i].paidAt)} · ${history[i].receiptNo}',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              trailing: TextButton(
-                                onPressed: () => ReceiptService.preview(
-                                    context, history[i]),
-                                child: const Text('রিসিপ্ট'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextButton(
+                                    onPressed: () => ReceiptService.preview(
+                                        context, history[i]),
+                                    child: Text(s.receipt),
+                                  ),
+                                  if (AppSession.instance.isAdmin)
+                                    PopupMenuButton<String>(
+                                      padding: EdgeInsets.zero,
+                                      iconSize: 18,
+                                      icon: const Icon(
+                                        Icons.more_vert,
+                                        size: 18,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      onSelected: (v) {
+                                        if (v == 'edit') {
+                                          context.push(
+                                            '/donation/${history[i].id}/edit',
+                                            extra: history[i],
+                                          );
+                                        } else if (v == 'delete') {
+                                          _confirmDeleteDonation(
+                                              context, history[i]);
+                                        }
+                                      },
+                                      itemBuilder: (_) => [
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.edit_outlined,
+                                                  size: 18,
+                                                  color: AppColors.primary),
+                                              const SizedBox(width: 8),
+                                              Text(s.editDonation),
+                                            ],
+                                          ),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.delete_outline,
+                                                  size: 18,
+                                                  color: AppColors.error),
+                                              const SizedBox(width: 8),
+                                              Text(s.delete),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
                               ),
                             ),
                           ],
@@ -245,15 +345,16 @@ class MemberProfileScreen extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context) {
+    final s = AppStrings.current;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('মেম্বার মুছুন'),
-        content: const Text('আপনি কি নিশ্চিত এই মেম্বারকে মুছে ফেলতে চান?'),
+        title: Text(s.deleteMember),
+        content: Text(s.deleteMemberConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('বাতিল'),
+            child: Text(s.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -262,24 +363,55 @@ class MemberProfileScreen extends StatelessWidget {
                 await UserRepository.instance.delete(memberId);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('মেম্বার মুছে ফেলা হয়েছে')),
+                    SnackBar(content: Text(s.memberDeleted)),
                   );
                   context.pop();
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('ব্যর্থ: $e')),
+                    SnackBar(content: Text('${s.failedPrefix}: $e')),
                   );
                 }
               }
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('মুছুন'),
+            child: Text(s.delete),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteDonation(
+      BuildContext context, DonationRecord d) async {
+    final s = AppStrings.current;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.moveToTrash),
+        content: Text(s.moveToTrashConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(s.moveToTrash),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await DonationRepository.instance.softDelete(d.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.itemMovedToTrash)),
+        );
+      }
+    }
   }
 
   void _showChangeRoleDialog(BuildContext context, AppUser member) {
@@ -357,6 +489,7 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -364,12 +497,12 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'রোল পরিবর্তন করুন',
+            s.changeRoleTitle,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
           Text(
-            '${widget.member.name} এর রোল পরিবর্তন করুন',
+            '${s.changeRoleDesc} ${widget.member.name}',
             style: const TextStyle(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
@@ -411,12 +544,12 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _getRoleLabel(role),
+                              _getRoleLabel(role, s),
                               style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _getRoleDescription(role),
+                              _getRoleDescription(role, s),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -437,7 +570,7 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _isLoading ? null : () => context.pop(),
-                  child: const Text('বাতিল'),
+                  child: Text(s.cancel),
                 ),
               ),
               const SizedBox(width: 12),
@@ -452,7 +585,7 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('সংরক্ষণ করুন'),
+                      : Text(s.saveChanges),
                 ),
               ),
             ],
@@ -463,6 +596,7 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
   }
 
   Future<void> _updateRole() async {
+    final s = AppStrings.current;
     setState(() => _isLoading = true);
     try {
       await UserRepository.instance.updateUserRole(
@@ -471,14 +605,14 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('রোল সফলভাবে পরিবর্তন করা হয়েছে')),
+          SnackBar(content: Text(s.roleChanged)),
         );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ত্রুটি: $e')),
+          SnackBar(content: Text('${s.error}: $e')),
         );
       }
     } finally {
@@ -488,19 +622,19 @@ class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
     }
   }
 
-  String _getRoleLabel(UserRole role) {
+  String _getRoleLabel(UserRole role, AppStrings s) {
     return switch (role) {
-      UserRole.superAdmin => 'সুপার অ্যাডমিন',
-      UserRole.collector => 'কালেক্টর',
-      UserRole.member => 'মেম্বার',
+      UserRole.superAdmin => s.superAdmin,
+      UserRole.collector => s.collector,
+      UserRole.member => s.memberRole,
     };
   }
 
-  String _getRoleDescription(UserRole role) {
+  String _getRoleDescription(UserRole role, AppStrings s) {
     return switch (role) {
-      UserRole.superAdmin => 'সম্পূর্ণ অ্যাক্সেস - সব কিছু পরিচালনা করতে পারবেন',
-      UserRole.collector => 'কালেকশন রেকর্ড এবং ডেটা ম্যানেজমেন্ট',
-      UserRole.member => 'শুধুমাত্র দেখার অ্যাক্সেস',
+      UserRole.superAdmin => s.superAdminDesc,
+      UserRole.collector => s.collectorDesc,
+      UserRole.member => s.memberDesc,
     };
   }
 }

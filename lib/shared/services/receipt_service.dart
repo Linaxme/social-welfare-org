@@ -9,6 +9,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/l10n/app_strings.dart';
+import '../data/locale_provider.dart';
 import '../data/org_settings.dart';
 import '../models/models.dart';
 import 'pdf_font_helper.dart';
@@ -18,6 +20,7 @@ class ReceiptService {
     final regular = await PdfFontHelper.getRegular();
     final bold = await PdfFontHelper.getBold();
     final org = OrgSettings.instance.orgName;
+    final s = AppStrings.current;
 
     final doc = pw.Document();
     doc.addPage(
@@ -29,11 +32,8 @@ class ReceiptService {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Header
-                _buildHeader(org, regular, bold),
+                _buildHeader(org, regular, bold, s),
                 pw.SizedBox(height: 16),
-
-                // Receipt title box
                 pw.Container(
                   width: double.infinity,
                   padding: const pw.EdgeInsets.symmetric(vertical: 8),
@@ -43,7 +43,7 @@ class ReceiptService {
                   ),
                   child: pw.Center(
                     child: pw.Text(
-                      'ডোনেশন রিসিপ্ট',
+                      PdfFontHelper.fixBangla(s.donationReceipt),
                       style: pw.TextStyle(
                         font: bold,
                         fontSize: 14,
@@ -53,21 +53,13 @@ class ReceiptService {
                   ),
                 ),
                 pw.SizedBox(height: 16),
-
-                // Receipt info
-                _buildInfoSection(regular, bold, donation),
+                _buildInfoSection(regular, bold, donation, s),
                 pw.SizedBox(height: 16),
-
-                // Amount section
-                _buildAmountSection(regular, bold, donation),
+                _buildAmountSection(regular, bold, donation, s),
                 pw.SizedBox(height: 16),
-
-                // Details
-                _buildDetailsSection(regular, bold, donation),
+                _buildDetailsSection(regular, bold, donation, s),
                 pw.Spacer(),
-
-                // Footer
-                _buildFooter(regular, bold, org),
+                _buildFooter(regular, bold, org, s),
               ],
             ),
           );
@@ -77,7 +69,7 @@ class ReceiptService {
     return doc;
   }
 
-  static pw.Widget _buildHeader(String org, pw.Font regular, pw.Font bold) {
+  static pw.Widget _buildHeader(String org, pw.Font regular, pw.Font bold, AppStrings s) {
     return pw.Column(
       children: [
         pw.Center(
@@ -88,7 +80,7 @@ class ReceiptService {
               border: pw.Border.all(color: PdfColors.green700, width: 2),
             ),
             child: pw.Text(
-              'স',
+              LocaleProvider.instance.isBn ? 'স' : 'S',
               style: pw.TextStyle(
                 font: bold,
                 fontSize: 28,
@@ -100,14 +92,14 @@ class ReceiptService {
         pw.SizedBox(height: 8),
         pw.Center(
           child: pw.Text(
-            org,
+            PdfFontHelper.fixBangla(org),
             style: pw.TextStyle(font: bold, fontSize: 18),
           ),
         ),
         pw.SizedBox(height: 2),
         pw.Center(
           child: pw.Text(
-            'সমাজ কল্যাণ সংগঠন',
+            PdfFontHelper.fixBangla(s.socialWelfareOrg),
             style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.grey600),
           ),
         ),
@@ -119,6 +111,7 @@ class ReceiptService {
     pw.Font regular,
     pw.Font bold,
     DonationRecord donation,
+    AppStrings s,
   ) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
@@ -128,16 +121,16 @@ class ReceiptService {
       ),
       child: pw.Column(
         children: [
-          _infoRow(regular, bold, 'রিসিপ্ট নং', donation.receiptNo),
+          _infoRow(regular, bold, s.receiptNo, donation.receiptNo),
           pw.Divider(height: 8, color: PdfColors.grey200),
           _infoRow(
             regular,
             bold,
-            'তারিখ',
+            s.date,
             '${donation.paidAt.day}/${donation.paidAt.month}/${donation.paidAt.year}',
           ),
           pw.Divider(height: 8, color: PdfColors.grey200),
-          _infoRow(regular, bold, 'ডোনার', donation.donorName),
+          _infoRow(regular, bold, s.donor, donation.donorName),
         ],
       ),
     );
@@ -147,6 +140,7 @@ class ReceiptService {
     pw.Font regular,
     pw.Font bold,
     DonationRecord donation,
+    AppStrings s,
   ) {
     return pw.Container(
       width: double.infinity,
@@ -159,12 +153,12 @@ class ReceiptService {
       child: pw.Column(
         children: [
           pw.Text(
-            'পরিমাণ',
+            PdfFontHelper.fixBangla(s.amount),
             style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.grey600),
           ),
           pw.SizedBox(height: 4),
           pw.Text(
-            '${donation.amount} টাকা',
+            PdfFontHelper.fixBangla('${donation.amount} ${s.taka}'),
             style: pw.TextStyle(
               font: bold,
               fontSize: 24,
@@ -173,7 +167,7 @@ class ReceiptService {
           ),
           pw.SizedBox(height: 4),
           pw.Text(
-            '(${_numberToWords(donation.amount)} টাকা মাত্র)',
+            PdfFontHelper.fixBangla('(${_numberToWords(donation.amount)} ${s.takaOnly})'),
             style: pw.TextStyle(font: regular, fontSize: 9, color: PdfColors.grey600),
           ),
         ],
@@ -185,6 +179,7 @@ class ReceiptService {
     pw.Font regular,
     pw.Font bold,
     DonationRecord donation,
+    AppStrings s,
   ) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
@@ -194,35 +189,35 @@ class ReceiptService {
       ),
       child: pw.Column(
         children: [
-          _infoRow(regular, bold, 'পেমেন্ট মোড', donation.paymentMode),
+          _infoRow(regular, bold, s.paymentMode, donation.paymentModeLabel),
           if (donation.note != null && donation.note!.isNotEmpty) ...[
             pw.Divider(height: 8, color: PdfColors.grey200),
-            _infoRow(regular, bold, 'নোট', donation.note!),
+            _infoRow(regular, bold, s.note, donation.note!),
           ],
           if (donation.enteredByName != null) ...[
             pw.Divider(height: 8, color: PdfColors.grey200),
-            _infoRow(regular, bold, 'এন্ট্রি করেছেন', donation.enteredByName!),
+            _infoRow(regular, bold, s.entryBy, donation.enteredByName!),
           ],
         ],
       ),
     );
   }
 
-  static pw.Widget _buildFooter(pw.Font regular, pw.Font bold, String org) {
+  static pw.Widget _buildFooter(pw.Font regular, pw.Font bold, String org, AppStrings s) {
     return pw.Column(
       children: [
         pw.Divider(color: PdfColors.grey300),
         pw.SizedBox(height: 8),
         pw.Center(
           child: pw.Text(
-            'ধন্যবাদ',
+            PdfFontHelper.fixBangla(s.thankYou),
             style: pw.TextStyle(font: bold, fontSize: 12, color: PdfColors.green800),
           ),
         ),
         pw.SizedBox(height: 4),
         pw.Center(
           child: pw.Text(
-            'সমাজ কল্যাণে আপনার মূল্যবান অবদানের জন্য আন্তরিক ধন্যবাদ।',
+            PdfFontHelper.fixBangla(s.thankYouMsg),
             style: pw.TextStyle(font: regular, fontSize: 9, color: PdfColors.grey600),
             textAlign: pw.TextAlign.center,
           ),
@@ -230,7 +225,7 @@ class ReceiptService {
         pw.SizedBox(height: 8),
         pw.Center(
           child: pw.Text(
-            org,
+            PdfFontHelper.fixBangla(org),
             style: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.grey500),
           ),
         ),
@@ -250,13 +245,13 @@ class ReceiptService {
         pw.SizedBox(
           width: 80,
           child: pw.Text(
-            label,
+            PdfFontHelper.fixBangla(label),
             style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.grey600),
           ),
         ),
         pw.Expanded(
           child: pw.Text(
-            value,
+            PdfFontHelper.fixBangla(value),
             style: pw.TextStyle(font: bold, fontSize: 11),
           ),
         ),
@@ -264,14 +259,28 @@ class ReceiptService {
     );
   }
 
-  /// Convert number to Bangla words (simplified).
   static String _numberToWords(int number) {
-    if (number == 0) return 'শূন্য';
+    if (number == 0) return LocaleProvider.instance.isEn ? 'zero' : 'শূন্য';
 
-    final units = ['', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়'];
-    final tens = ['', '', 'কুই', 'ত্রিশ', 'চল্লিশ', 'পঞ্চাশ', 'ষাট', 'সত্তর', 'আশি', 'নব্বই'];
+    if (LocaleProvider.instance.isEn) {
+      return _enNumberToWords(number);
+    } else {
+      return _bnNumberToWords(number);
+    }
+  }
 
-    if (number < 10) return units[number];
+  static String _enNumberToWords(int number) {
+    if (number == 0) return '';
+    final units = [
+      '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+      'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+      'seventeen', 'eighteen', 'nineteen'
+    ];
+    final tens = [
+      '', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'
+    ];
+
+    if (number < 20) return units[number];
     if (number < 100) {
       final t = number ~/ 10;
       final u = number % 10;
@@ -280,28 +289,65 @@ class ReceiptService {
     if (number < 1000) {
       final h = number ~/ 100;
       final rest = number % 100;
-      return '${units[h]} শত${rest > 0 ? ' ${_numberToWords(rest)}' : ''}';
+      return '${units[h]} hundred${rest > 0 ? ' ${_enNumberToWords(rest)}' : ''}';
     }
     if (number < 100000) {
       final t = number ~/ 1000;
       final rest = number % 1000;
-      return '${_numberToWords(t)} হাজার${rest > 0 ? ' ${_numberToWords(rest)}' : ''}';
+      return '${_enNumberToWords(t)} thousand${rest > 0 ? ' ${_enNumberToWords(rest)}' : ''}';
     }
     if (number < 10000000) {
       final l = number ~/ 100000;
       final rest = number % 100000;
-      return '${_numberToWords(l)} লাখ${rest > 0 ? ' ${_numberToWords(rest)}' : ''}';
+      return '${_enNumberToWords(l)} lakh${rest > 0 ? ' ${_enNumberToWords(rest)}' : ''}';
     }
     final c = number ~/ 10000000;
     final rest = number % 10000000;
-    return '${_numberToWords(c)} কোটি${rest > 0 ? ' ${_numberToWords(rest)}' : ''}';
+    return '${_enNumberToWords(c)} crore${rest > 0 ? ' ${_enNumberToWords(rest)}' : ''}';
   }
 
-  /// PC/Web → PDF ডাউনলোড · মোবাইল → শেয়ার শিট
+  static String _bnNumberToWords(int number) {
+    if (number == 0) return '';
+
+    const bn1to99 = [
+      '', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়', 'দশ',
+      'এগারো', 'বারো', 'তেরো', 'চৌদ্দ', 'পনেরো', 'ষোলো', 'সতেরো', 'আঠারো', 'উনিশ', 'বিশ',
+      'একুশ', 'বাইশ', 'তেইশ', 'চব্বিশ', 'পঁচিশ', 'ছাব্বিশ', 'সাতাশ', 'আটাশ', 'উনত্রিশ', 'ত্রিশ',
+      'একত্রিশ', 'বত্রিশ', 'তেত্রিশ', 'চৌত্রিশ', 'পঁয়ত্রিশ', 'ছত্রিশ', 'সাইত্রিশ', 'আটত্রিশ', 'উনচল্লিশ', 'চল্লিশ',
+      'একচল্লিশ', 'বিয়াল্লিশ', 'তেতাল্লিশ', 'চুয়াল্লিশ', 'পঁয়তাল্লিশ', 'ছেচল্লিশ', 'সাতচল্লিশ', 'আটচল্লিশ', 'উনপঞ্চাশ', 'পঞ্চাশ',
+      'একান্ন', 'বায়ান্ন', 'তিরান্ন', 'চুয়ান্ন', 'পঞ্চান্ন', 'ছাপ্পান্ন', 'সাতান্ন', 'আটান্ন', 'উনষাট', 'ষাট',
+      'একষট্টি', 'বাষট্টি', 'তেষট্টি', 'চৌষট্টি', 'পঁয়ষট্টি', 'ছেষট্টি', 'সাতষট্টি', 'আটষট্টি', 'উনসত্তর', 'সত্তর',
+      'একাত্তর', 'বাহাত্তর', 'তিয়াত্তর', 'চুয়াত্তর', 'পঁচাত্তর', 'ছেয়াত্তর', 'সাতাত্তর', 'আটাত্তর', 'উনাশি', 'আশি',
+      'একাশি', 'বিরাশি', 'তিরাশি', 'চৌরাশি', 'পঁচাশি', 'ছিয়াশি', 'সাতাশি', 'আটাশি', 'উননব্বই', 'নব্বই',
+      'একানব্বই', 'বিয়ানব্বই', 'তিরানব্বই', 'চুয়ানব্বই', 'পঁচানব্বই', 'ছেয়ানব্বই', 'সাতানব্বই', 'আটানব্বই', 'নিরানব্বই'
+    ];
+
+    if (number < 100) return bn1to99[number];
+    if (number < 1000) {
+      final h = number ~/ 100;
+      final rest = number % 100;
+      return '${bn1to99[h]} শত${rest > 0 ? ' ${_bnNumberToWords(rest)}' : ''}';
+    }
+    if (number < 100000) {
+      final t = number ~/ 1000;
+      final rest = number % 1000;
+      return '${_bnNumberToWords(t)} হাজার${rest > 0 ? ' ${_bnNumberToWords(rest)}' : ''}';
+    }
+    if (number < 10000000) {
+      final l = number ~/ 100000;
+      final rest = number % 100000;
+      return '${_bnNumberToWords(l)} লাখ${rest > 0 ? ' ${_bnNumberToWords(rest)}' : ''}';
+    }
+    final c = number ~/ 10000000;
+    final rest = number % 10000000;
+    return '${_bnNumberToWords(c)} কোটি${rest > 0 ? ' ${_bnNumberToWords(rest)}' : ''}';
+  }
+
   static Future<void> preview(
     BuildContext context,
     DonationRecord donation,
   ) async {
+    final s = AppStrings.current;
     try {
       final doc = await buildPdf(donation);
       final bytes = await doc.save();
@@ -309,9 +355,12 @@ class ReceiptService {
 
       if (_isDesktopOrWeb) {
         await Printing.sharePdf(bytes: Uint8List.fromList(bytes), filename: filename);
+        if (kIsWeb) {
+          await Future.delayed(const Duration(milliseconds: 150));
+        }
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('রিসিপ্ট ডাউনলোড: $filename')),
+            SnackBar(content: Text('${s.receiptDownload}: $filename')),
           );
         }
       } else {
@@ -320,14 +369,14 @@ class ReceiptService {
         await file.writeAsBytes(bytes);
         await Share.shareXFiles(
           [XFile(file.path, mimeType: 'application/pdf', name: filename)],
-          subject: 'ডোনেশন রিসিপ্ট',
+          subject: s.donationReceipt,
           text: '${OrgSettings.instance.orgName}\n${donation.receiptNo}',
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('রিসিপ্ট তৈরি ব্যর্থ: $e')),
+          SnackBar(content: Text('${s.receiptFailed}: $e')),
         );
       }
     }

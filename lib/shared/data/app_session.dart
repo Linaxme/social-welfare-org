@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../core/l10n/app_strings.dart';
 import '../models/models.dart';
 import '../services/auth_service.dart';
 import 'org_settings.dart';
@@ -23,9 +24,9 @@ class AppSession extends ChangeNotifier {
   AppUser? get userOrNull => _user;
   AppUser get user =>
       _user ??
-      const AppUser(
+      AppUser(
         id: '',
-        name: 'গেস্ট',
+        name: AppStrings.current.admin,
         phone: '',
         role: UserRole.member,
       );
@@ -37,7 +38,7 @@ class AppSession extends ChangeNotifier {
   bool get isCollector => _user?.role == UserRole.collector;
   bool get isMember => _user?.role == UserRole.member;
   bool get canRecordDonation => isAdmin || isCollector;
-  bool get canManageMembers => isAdmin || isCollector;
+  bool get canManageMembers => isAdmin;
   bool get canEnterHelp =>
       isAdmin ||
       (isCollector && OrgSettings.instance.collectorCanEnterDonation);

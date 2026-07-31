@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/services/report_export_service.dart';
@@ -27,16 +28,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppPageScaffold(
-      title: 'কাস্টম রিপোর্ট',
+      title: s.customReport,
       body: Stack(
         children: [
           ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Year selector
               Text(
-                'বছর',
+                s.year,
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const SizedBox(height: 8),
@@ -46,7 +47,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     .map(
                       (y) => DropdownMenuItem(
                         value: y,
-                        child: Text(Formatters.toBnDigits('$y')),
+                        child: Text(Formatters.toDigits('$y')),
                       ),
                     )
                     .toList(),
@@ -56,11 +57,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ─── বার্ষিক সারাংশ ───
-              _SectionTitle('বার্ষিক সারাংশ'),
+              _SectionTitle(s.yearlySummary),
               _ExportRow(
                 icon: Icons.summarize_outlined,
-                title: 'বার্ষিক সারাংশ',
+                title: s.yearlySummary,
                 onPdf: () => _run(
                   () => ReportExportService.exportYearlySummaryPdf(
                     context,
@@ -76,11 +76,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ─── মেম্বার ───
-              _SectionTitle('মেম্বার'),
+              _SectionTitle(s.members),
               _ExportRow(
                 icon: Icons.people_outline,
-                title: 'মেম্বার তালিকা',
+                title: s.memberListReport,
                 onPdf: () => _run(
                   () => ReportExportService.exportMembersPdf(context),
                 ),
@@ -90,12 +89,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ─── কালেকশন ───
-              _SectionTitle('কালেকশন'),
+              _SectionTitle(s.collectionReport),
               _ExportRow(
                 icon: Icons.payments_outlined,
-                title: 'কালেকশন তালিকা',
-                subtitle: 'নির্বাচিত বছর',
+                title: s.collectionReport,
+                subtitle: s.selectedYear,
                 onPdf: () => _run(
                   () => ReportExportService.exportCollectionsPdf(
                     context,
@@ -111,8 +109,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               _ExportRow(
                 icon: Icons.bar_chart_outlined,
-                title: 'মাসিক কালেকশন সারাংশ',
-                subtitle: 'মাস অনুযায়ী',
+                title: s.monthlyCollectionSummary,
+                subtitle: s.byMonth,
                 onPdf: () => _run(
                   () => ReportExportService.exportMonthlyCollectionPdf(
                     context,
@@ -128,11 +126,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ─── সাহায্য ───
-              _SectionTitle('সাহায্য বিতরণ'),
+              _SectionTitle(s.helpDistribution),
               _ExportRow(
                 icon: Icons.volunteer_activism_outlined,
-                title: 'সাহায্য বিতরণ রিপোর্ট',
+                title: s.helpDistributionReport,
                 onPdf: () => _run(
                   () => ReportExportService.exportHelpPdf(context),
                 ),

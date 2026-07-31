@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validators.dart';
@@ -26,7 +27,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   final _amount = TextEditingController();
   final _note = TextEditingController();
   DateTime _date = DateTime.now();
-  String _paymentMode = 'নগদ';
+  String _paymentMode = 'cash';
   bool _loading = false;
   List<AppUser> _members = [];
 
@@ -38,9 +39,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
 
   Future<void> _loadMembers() async {
     final list = await UserRepository.instance.fetchMembers();
-    final session = AppSession.instance;
     setState(() {
-      // সবাই দান করতে পারে — অ্যাডমিনসহ
       _members = list
           .where((m) =>
               m.role == UserRole.member ||
@@ -53,8 +52,6 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
           _donor =
               _members.firstWhere((m) => m.id == widget.preselectedDonorId);
         } catch (_) {}
-      } else if (session.isAdmin) {
-        // সুপার অ্যাডমিন ডিফল্টে নিজেকে সিলেক্ট করতে পারবেন চাইলে বাটন দিয়ে
       }
     });
   }
@@ -62,7 +59,6 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   void _selectSelf() {
     final me = AppSession.instance.userOrNull;
     if (me == null || me.id.isEmpty) return;
-    // Prefer Firestore-loaded profile if in list
     try {
       final fromList = _members.firstWhere((m) => m.id == me.id);
       setState(() => _donor = fromList);
@@ -82,6 +78,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   }
 
   Future<void> _pickDonor() async {
+    final s = AppStrings.current;
     final picked = await showModalBottomSheet<AppUser>(
       context: context,
       isScrollControlled: true,
@@ -90,11 +87,11 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
         initialChildSize: 0.7,
         builder: (_, controller) => Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Text(
-                'দাতা নির্বাচন',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                s.selectDonor,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
             ),
             Expanded(
@@ -106,7 +103,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                   return ListTile(
                     title: Text(m.name),
                     subtitle: Text(
-                      '${Formatters.phone(m.phone)}${m.role == UserRole.superAdmin ? ' · অ্যাডমিন' : ''}',
+                      '${Formatters.phone(m.phone)}${m.role == UserRole.superAdmin ? ' · ${s.admin}' : ''}',
                     ),
                     onTap: () => Navigator.pop(ctx, m),
                   );
@@ -121,15 +118,14 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   }
 
   Future<void> _save() async {
-    // Validate donor selection
+    final s = AppStrings.current;
     if (_donor == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('দাতা বেছে নিন')),
+        SnackBar(content: Text(s.selectDonor)),
       );
       return;
     }
 
-    // Validate amount using form
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
@@ -146,20 +142,20 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
       final openReceipt = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('ডোনেশন সংরক্ষিত'),
+          title: Text(s.donationSaved),
           content: Text(
-            'রিসিপ্ট: ${record.receiptNo}\n'
-            'মেম্বার: ${record.donorName}\n'
-            'পরিমাণ: ${Formatters.money(record.amount)}',
+            '${s.receiptNo}: ${record.receiptNo}\n'
+            '${s.members}: ${record.donorName}\n'
+            '${s.amount}: ${Formatters.money(record.amount)}',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('বন্ধ'),
+              child: Text(s.close),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('রিসিপ্ট PDF'),
+              child: Text(s.receiptPdf),
             ),
           ],
         ),
@@ -181,14 +177,15 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppPageScaffold(
-      title: 'জমা নিন',
+      title: s.collectDonation,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text('দাতা', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.donor, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             InkWell(
               onTap: _pickDonor,
@@ -199,7 +196,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                 ),
                 child: Text(
                   _donor == null
-                      ? 'দাতা বেছে নিন'
+                      ? s.selectDonor
                       : '${_donor!.name} · ${Formatters.phone(_donor!.phone)}',
                   style: TextStyle(
                     color: _donor == null
@@ -215,17 +212,17 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                   TextButton.icon(
                     onPressed: _selectSelf,
                     icon: const Icon(Icons.person_outline, size: 18),
-                    label: const Text('নিজের জমা'),
+                    label: Text(s.selfCollection),
                   ),
                 const Spacer(),
                 if (AppSession.instance.canManageMembers)
                   TextButton(
                     onPressed: () => context.push('/members/new'),
-                    child: const Text('+ নতুন মেম্বার'),
+                    child: Text(s.newMemberPlus),
                   ),
               ],
             ),
-            Text('পরিমাণ (টাকা)', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.amountTaka, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _amount,
@@ -233,19 +230,19 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
               validator: Validators.amount,
             ),
             const SizedBox(height: 14),
-            Text('পেমেন্ট মোড', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.paymentMode, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _paymentMode,
-              items: const [
-                DropdownMenuItem(value: 'নগদ', child: Text('নগদ')),
-                DropdownMenuItem(value: 'বিকাশ', child: Text('বিকাশ')),
-                DropdownMenuItem(value: 'অন্যান্য', child: Text('অন্যান্য')),
+              items: [
+                DropdownMenuItem(value: 'cash', child: Text(s.cash)),
+                DropdownMenuItem(value: 'bkash', child: Text(s.bkash)),
+                DropdownMenuItem(value: 'other', child: Text(s.other)),
               ],
               onChanged: (v) => setState(() => _paymentMode = v ?? _paymentMode),
             ),
             const SizedBox(height: 14),
-            Text('তারিখ', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.date, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             InkWell(
               onTap: () async {
@@ -265,7 +262,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            Text('নোট', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.note, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextField(controller: _note, maxLines: 2),
             const SizedBox(height: 28),
@@ -277,7 +274,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('সেভ ও রিসিপ্ট'),
+                  : Text(s.saveAndReceipt),
             ),
           ],
         ),

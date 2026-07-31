@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validators.dart';
@@ -18,146 +19,84 @@ class AddHelpScreen extends StatefulWidget {
 class _AddHelpScreenState extends State<AddHelpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _nid = TextEditingController();
   final _phone = TextEditingController();
   final _address = TextEditingController();
   final _description = TextEditingController();
   final _amount = TextEditingController();
   DateTime _date = DateTime.now();
-  String _reason = 'চিকিৎসা';
+  final _reasonController = TextEditingController();
   bool _loading = false;
-
-  static const _reasons = ['চিকিৎসা', 'শিক্ষা', 'বিধবা সাহায্য', 'অন্যান্য'];
 
   @override
   void dispose() {
     _name.dispose();
-    _nid.dispose();
     _phone.dispose();
     _address.dispose();
     _description.dispose();
     _amount.dispose();
+    _reasonController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-    );
-    if (picked != null) setState(() => _date = picked);
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _loading = true);
-    try {
-      final amount = Validators.cleanAmount(_amount.text) ?? 0;
-      await DisbursementRepository.instance.add(
-        DisbursementRecord(
-          id: '',
-          beneficiaryName: _name.text.trim(),
-          nidNumber: _nid.text.trim(),
-          phone: Validators.cleanPhone(_phone.text),
-          address: _address.text.trim(),
-          reason: _reason,
-          amount: amount,
-          date: _date,
-          description: _description.text.trim().isEmpty
-              ? null
-              : _description.text.trim(),
-        ),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('সাহায্য রেকর্ড সংরক্ষিত হয়েছে')),
-      );
-      context.pop();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e'.replaceFirst('Exception: ', ''))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
+
     return AppPageScaffold(
-      title: 'নতুন সাহায্য',
+      title: s.newHelpTitle,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            _label(context, 'নাম *'),
+            _label(context, s.recipientName),
             TextFormField(
               controller: _name,
-              decoration: const InputDecoration(hintText: 'প্রাপকের নাম'),
+              decoration: InputDecoration(hintText: s.fullName),
               validator: Validators.name,
             ),
             const SizedBox(height: 14),
-            _label(context, 'এনআইডি নম্বর *'),
-            TextFormField(
-              controller: _nid,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: '১৩ ডিজিট'),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'এনআইডি দিন';
-                return Validators.nid(v);
-              },
-            ),
-            const SizedBox(height: 14),
-            _label(context, 'ফোন নম্বর *'),
+            _label(context, s.phoneNumber),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: '০১৭XXXXXXXX'),
+              decoration: const InputDecoration(hintText: '01XXXXXXXX'),
               validator: Validators.phone,
             ),
             const SizedBox(height: 14),
-            _label(context, 'ঠিকানা *'),
+            _label(context, s.fullAddress),
             TextFormField(
               controller: _address,
               maxLines: 2,
-              decoration: const InputDecoration(
-                hintText: 'গ্রাম, উপজেলা, জেলা',
+              decoration: InputDecoration(
+                hintText: s.addressHint,
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'ঠিকানা দিন' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? s.enterName : null,
             ),
             const SizedBox(height: 14),
-            _label(context, 'কেন (কারণ) *'),
-            DropdownButtonFormField<String>(
-              initialValue: _reason,
-              items: _reasons
-                  .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                  .toList(),
-              onChanged: (v) => setState(() => _reason = v ?? _reason),
-              decoration: const InputDecoration(),
+            _label(context, s.reason),
+            TextFormField(
+              controller: _reasonController,
+              decoration: InputDecoration(hintText: s.reason),
+              validator: (v) => (v == null || v.trim().isEmpty) ? s.enterName : null,
             ),
             const SizedBox(height: 14),
-            _label(context, 'বিবরণ নোট'),
+            _label(context, s.descriptionNote),
             TextField(
               controller: _description,
               maxLines: 3,
-              decoration: const InputDecoration(hintText: 'অতিরিক্ত তথ্য'),
+              decoration: InputDecoration(hintText: s.additionalInfo),
             ),
             const SizedBox(height: 14),
-            _label(context, 'পরিমাণ (টাকা) *'),
+            _label(context, '${s.amountTaka} *'),
             TextFormField(
               controller: _amount,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: '০'),
+              decoration: const InputDecoration(hintText: '0'),
               validator: Validators.amount,
             ),
             const SizedBox(height: 14),
-            _label(context, 'তারিখ *'),
+            _label(context, '${s.date} *'),
             InkWell(
               onTap: _pickDate,
               borderRadius: BorderRadius.circular(12),
@@ -180,12 +119,60 @@ class _AddHelpScreenState extends State<AddHelpScreen> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('সাহায্য রেকর্ড করুন'),
+                  : Text(s.recordHelp),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _save() async {
+    final s = AppStrings.current;
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+    try {
+      final amount = Validators.cleanAmount(_amount.text) ?? 0;
+      await DisbursementRepository.instance.add(
+        DisbursementRecord(
+          id: '',
+          beneficiaryName: _name.text.trim(),
+          nidNumber: '',
+          phone: Validators.cleanPhone(_phone.text),
+          address: _address.text.trim(),
+          reason: _reasonController.text.trim(),
+          amount: amount,
+          date: _date,
+          description: _description.text.trim().isEmpty
+              ? null
+              : _description.text.trim(),
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.helpRecordSaved)),
+      );
+      context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e'.replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Widget _label(BuildContext context, String text) {

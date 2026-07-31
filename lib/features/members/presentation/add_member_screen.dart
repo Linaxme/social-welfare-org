@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validators.dart';
@@ -19,7 +20,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
-  final _nid = TextEditingController();
   final _address = TextEditingController();
   final _password = TextEditingController(text: '123456');
   UserRole _role = UserRole.member;
@@ -30,7 +30,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   void dispose() {
     _name.dispose();
     _phone.dispose();
-    _nid.dispose();
     _address.dispose();
     _password.dispose();
     super.dispose();
@@ -59,14 +58,15 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         phone: _previewId!,
         password: _password.text,
         role: _role,
-        nidNumber: _nid.text.trim().isEmpty ? null : _nid.text.trim(),
+        nidNumber: null,
         address: _address.text.trim(),
       );
       if (!mounted) return;
+      final s = AppStrings.current;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'যোগ হয়েছে · আইডি: ${Formatters.phone(user.phone)}',
+            '${s.members} · ${s.userIdAuto}: ${Formatters.phone(user.phone)}',
           ),
         ),
       );
@@ -83,28 +83,29 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppPageScaffold(
-      title: 'নতুন মেম্বার',
+      title: s.newMember,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text('নাম', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.name, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'পূর্ণ নাম'),
+              decoration: InputDecoration(hintText: s.fullName),
               validator: Validators.name,
             ),
             const SizedBox(height: 16),
-            Text('ফোন নম্বর', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.phone, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: '০১৭XXXXXXXX'),
+              decoration: const InputDecoration(hintText: '01XXXXXXXX'),
               onChanged: _updatePreview,
               validator: Validators.phone,
             ),
@@ -117,7 +118,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'ইউজার আইডি (অটো): ${Formatters.phone(_previewId!)}',
+                  '${s.userIdAuto}: ${Formatters.phone(_previewId!)}',
                   style: const TextStyle(
                     color: AppColors.success,
                     fontWeight: FontWeight.w600,
@@ -126,37 +127,27 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            Text('এনআইডি নং (অপশনাল)',
-                style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _nid,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'জাতীয় পরিচয়পত্র নম্বর'),
-              validator: Validators.nid,
-            ),
-            const SizedBox(height: 16),
-            Text('ঠিকানা', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.address, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _address,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                hintText: 'গ্রাম/এলাকা, থানা, জেলা',
+              decoration: InputDecoration(
+                hintText: s.addressHint,
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'ঠিকানা দিন' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? s.enterName : null,
             ),
             const SizedBox(height: 16),
-            Text('রোল', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.role, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             DropdownButtonFormField<UserRole>(
               initialValue: _role,
-              items: const [
-                DropdownMenuItem(value: UserRole.member, child: Text('মেম্বার')),
+              items: [
+                DropdownMenuItem(value: UserRole.member, child: Text(s.memberRole)),
                 DropdownMenuItem(
                   value: UserRole.collector,
-                  child: Text('কালেক্টর'),
+                  child: Text(s.collector),
                 ),
               ],
               onChanged: (v) {
@@ -164,7 +155,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               },
             ),
             const SizedBox(height: 16),
-            Text('প্রাথমিক পাসওয়ার্ড',
+            Text(s.initialPassword,
                 style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
@@ -180,7 +171,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('মেম্বার যোগ করুন'),
+                  : Text(s.addMember),
             ),
           ],
         ),

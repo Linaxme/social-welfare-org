@@ -1,3 +1,5 @@
+import '../../core/l10n/app_strings.dart';
+
 enum UserRole { superAdmin, collector, member }
 
 class AppUser {
@@ -35,11 +37,14 @@ class AppUser {
         UserRole.member || UserRole.collector || UserRole.superAdmin => true,
       };
 
-  String get roleLabel => switch (role) {
-        UserRole.superAdmin => 'সুপার অ্যাডমিন',
-        UserRole.collector => 'কালেক্টর',
-        UserRole.member => 'মেম্বার',
-      };
+  String get roleLabel {
+    final s = AppStrings.current;
+    return switch (role) {
+      UserRole.superAdmin => s.superAdmin,
+      UserRole.collector => s.collector,
+      UserRole.member => s.memberRole,
+    };
+  }
 }
 
 extension AppUserListX on Iterable<AppUser> {
@@ -55,8 +60,11 @@ class DonationRecord {
     required this.paidAt,
     required this.receiptNo,
     this.note,
-    this.paymentMode = 'নগদ',
+    this.paymentMode = 'cash',
     this.enteredByName,
+    this.enteredById,
+    this.status = 'active',
+    this.deletedAt,
   });
 
   final String id;
@@ -68,6 +76,21 @@ class DonationRecord {
   final String? note;
   final String paymentMode;
   final String? enteredByName;
+  final String? enteredById;
+  final String status;
+  final DateTime? deletedAt;
+
+  bool get isDeleted => status == 'deleted';
+  bool get isActive => status == 'active';
+
+  String get paymentModeLabel {
+    final s = AppStrings.current;
+    return switch (paymentMode) {
+      'cash' || 'নগদ' => s.cash,
+      'bkash' || 'বিকাশ' => s.bkash,
+      _ => s.other,
+    };
+  }
 }
 
 class DisbursementRecord {
@@ -82,6 +105,8 @@ class DisbursementRecord {
     required this.date,
     this.description,
     this.enteredByName,
+    this.status = 'active',
+    this.deletedAt,
   });
 
   final String id;
@@ -94,6 +119,35 @@ class DisbursementRecord {
   final DateTime date;
   final String? description;
   final String? enteredByName;
+  final String status;
+  final DateTime? deletedAt;
+
+  bool get isDeleted => status == 'deleted';
+  bool get isActive => status == 'active';
+
+  String get reasonLabel {
+    final s = AppStrings.current;
+    return switch (reason) {
+      'medical' || 'চিকিৎসা' => s.medical,
+      'education' || 'শিক্ষা' => s.education,
+      'widow' || 'বিধবা সাহায্য' => s.widowHelp,
+      _ => s.others,
+    };
+  }
+}
+
+class CollectorStat {
+  const CollectorStat({
+    required this.collectorId,
+    required this.collectorName,
+    required this.totalAmount,
+    required this.count,
+  });
+
+  final String collectorId;
+  final String collectorName;
+  final int totalAmount;
+  final int count;
 }
 
 class DashboardSummary {
@@ -114,4 +168,18 @@ class DashboardSummary {
 
   /// Index 0 = Jan ... 11 = Dec for selected year
   final List<int> monthlyCollections;
+}
+
+class TopDonorStat {
+  const TopDonorStat({
+    required this.donorId,
+    required this.donorName,
+    required this.totalAmount,
+    required this.count,
+  });
+
+  final String donorId;
+  final String donorName;
+  final int totalAmount;
+  final int count;
 }

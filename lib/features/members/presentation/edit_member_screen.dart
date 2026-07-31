@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validators.dart';
@@ -62,6 +63,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final s = AppStrings.current;
     final phone = Validators.cleanPhone(_phone.text);
     setState(() => _saving = true);
     try {
@@ -75,7 +77,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('প্রোফাইল আপডেট হয়েছে')),
+        SnackBar(content: Text(s.profileUpdated)),
       );
       context.pop();
     } catch (e) {
@@ -91,34 +93,35 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     if (_loading) {
-      return const AppPageScaffold(
-        title: 'এডিট',
-        body: Center(child: CircularProgressIndicator()),
+      return AppPageScaffold(
+        title: s.profileEdit,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     if (_missing) {
-      return const AppPageScaffold(
-        title: 'এডিট',
-        body: Center(child: Text('মেম্বার পাওয়া যায়নি')),
+      return AppPageScaffold(
+        title: s.profileEdit,
+        body: Center(child: Text('${s.memberRole} ${s.recordNotFound}')),
       );
     }
 
     return AppPageScaffold(
-      title: 'প্রোফাইল এডিট',
+      title: s.profileEdit,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text('নাম', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.name, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _name,
               validator: Validators.name,
             ),
             const SizedBox(height: 16),
-            Text('ফোন নম্বর', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.phone, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _phone,
@@ -126,30 +129,30 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
               validator: Validators.phone,
             ),
             const SizedBox(height: 16),
-            Text('এনআইডি নং (অপশনাল)',
+            Text(s.nidOptional,
                 style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nid,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'জাতীয় পরিচয়পত্র নম্বর'),
+              decoration: InputDecoration(hintText: s.nidHint),
               validator: Validators.nid,
             ),
             const SizedBox(height: 16),
-            Text('ঠিকানা', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.address, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _address,
               maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'গ্রাম/এলাকা, থানা, জেলা',
+              decoration: InputDecoration(
+                hintText: s.addressHint,
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'ঠিকানা দিন' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? s.enterName : null,
             ),
             const SizedBox(height: 16),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('সক্রিয় মেম্বার'),
+              title: Text(s.activeMember),
               value: _active,
               activeThumbColor: AppColors.primary,
               onChanged: (v) => setState(() => _active = v),
@@ -163,11 +166,11 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('সংরক্ষণ'),
+                  : Text(s.save),
             ),
             const SizedBox(height: 8),
             Text(
-              'আইডি: ${Formatters.phone(Validators.cleanPhone(_phone.text))}',
+              '${s.userIdAuto}: ${Formatters.phone(Validators.cleanPhone(_phone.text))}',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
             ),

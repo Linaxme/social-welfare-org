@@ -32,7 +32,11 @@ service cloud.firestore {
         || (request.auth.uid == userId
             && request.resource.data.role == resource.data.role
             && request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['name', 'phone', 'uniqueId']));
+                .hasOnly(['name', 'phone', 'uniqueId']))
+        || (isCollector()
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['totalDonation', 'donationCount', 'lastDonationAt', 'updatedAt']));
       allow delete: if isAdmin();
     }
 

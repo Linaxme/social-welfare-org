@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/data/app_session.dart';
@@ -49,14 +50,15 @@ class _MemberListScreenState extends State<MemberListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppTabScaffold(
-      title: 'মেম্বার তালিকা',
+      title: s.memberList,
       floatingActionButton: AppSession.instance.canManageMembers
           ? FloatingActionButton.extended(
               heroTag: 'add_member_fab',
               onPressed: () => context.push('/members/new'),
               icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('নতুন মেম্বার'),
+              label: Text(s.newMember),
             )
           : null,
       body: Column(
@@ -67,7 +69,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
               controller: _search,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'নাম বা ফোন দিয়ে খুঁজুন',
+                hintText: s.searchNameOrPhone,
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -89,7 +91,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
               builder: (context, snap) {
                 if (snap.hasError) {
                   return ErrorState(
-                    message: 'ডাটা লোড করা যায়নি। আবার চেষ্টা করুন।',
+                    message: '${s.loading} ${s.retry}',
                     onRetry: () => setState(() {}),
                   );
                 }
@@ -98,7 +100,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                 }
                 final list = _filter(snap.data!);
                 if (list.isEmpty) {
-                  return const EmptyState(message: 'কোনো মেম্বার পাওয়া যায়নি');
+                  return EmptyState(message: '${s.members} ${s.recordNotFound}');
                 }
                 return RefreshIndicator(
                   onRefresh: () async => setState(() {}),
@@ -109,6 +111,14 @@ class _MemberListScreenState extends State<MemberListScreen> {
                         const Divider(indent: 76, height: 1),
                     itemBuilder: (context, index) {
                       final m = list[index];
+                      final canViewFullProfile = AppSession.instance.isAdmin ||
+                          AppSession.instance.isCollector ||
+                          m.id == AppSession.instance.user.id;
+
+                      final subtitleText = canViewFullProfile
+                          ? '${Formatters.phone(m.phone)} · ${m.roleLabel}${m.email != null && m.email!.isNotEmpty ? '\n${m.email}' : ''}'
+                          : m.roleLabel;
+
                       return ListTile(
                         leading: AvatarCircle(
                           name: m.name,
@@ -118,7 +128,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
-                          '${Formatters.phone(m.phone)} · ${m.roleLabel}',
+                          subtitleText,
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -132,7 +142,9 @@ class _MemberListScreenState extends State<MemberListScreen> {
                             fontSize: 13,
                           ),
                         ),
-                        onTap: () => context.push('/members/${m.id}'),
+                        onTap: canViewFullProfile
+                            ? () => context.push('/members/${m.id}')
+                            : null,
                       );
                     },
                   ),

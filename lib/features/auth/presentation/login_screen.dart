@@ -2,9 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/data/app_session.dart';
+import '../../../shared/data/locale_provider.dart';
 import '../../../shared/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
-  bool _registerMode = false;
   String? _error;
 
   @override
@@ -45,8 +46,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _login() async {
-    // Validate the active form
-    final formKey = _tabController.index == 0 ? _adminFormKey : _memberFormKey;
+    final formKey = _tabController.index == 1 ? _adminFormKey : _memberFormKey;
     if (!formKey.currentState!.validate()) return;
 
     setState(() {
@@ -54,21 +54,12 @@ class _LoginScreenState extends State<LoginScreen>
       _error = null;
     });
     try {
-      if (_tabController.index == 0) {
-        if (_registerMode) {
-          final user = await AuthService.instance.registerSuperAdmin(
-            email: _emailController.text,
-            password: _passwordController.text,
-            name: _nameController.text,
-          );
-          await AppSession.instance.setUser(user);
-        } else {
-          final user = await AuthService.instance.signInWithEmail(
-            email: _emailController.text,
-            password: _passwordController.text,
-          );
-          await AppSession.instance.setUser(user);
-        }
+      if (_tabController.index == 1) {
+        final user = await AuthService.instance.signInWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+        await AppSession.instance.setUser(user);
       } else {
         final user = await AuthService.instance.signInWithPhoneId(
           phoneOrId: _phoneController.text,
@@ -87,20 +78,21 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   String _authMessage(FirebaseAuthException e) {
+    final s = AppStrings.current;
     return switch (e.code) {
-      'user-not-found' => 'ইউজার পাওয়া যায়নি — প্রথমবার হলে অ্যাডমিন রেজিস্টার করুন',
-      'wrong-password' || 'invalid-credential' => 'ইমেইল/পাসওয়ার্ড ভুল',
-      'email-already-in-use' => 'ইমেইল ইতিমধ্যে ব্যবহৃত',
-      'weak-password' => 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে',
-      'invalid-email' => 'ইমেইল সঠিক নয়',
-      'operation-not-allowed' =>
-        'Email/Password Auth চালু করুন Firebase Console → Authentication',
+      'user-not-found' => s.userNotFound,
+      'wrong-password' || 'invalid-credential' => s.wrongPassword,
+      'email-already-in-use' => s.emailInUse,
+      'weak-password' => s.weakPassword,
+      'invalid-email' => s.invalidEmail,
+      'operation-not-allowed' => s.enableAuth,
       _ => e.message ?? e.code,
     };
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -115,9 +107,39 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              const SizedBox(height: 36),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: ListenableBuilder(
+                  listenable: LocaleProvider.instance,
+                  builder: (context, _) {
+                    final isBn = LocaleProvider.instance.isBn;
+                    return GestureDetector(
+                      onTap: () => LocaleProvider.instance.toggleLocale(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          isBn ? 'EN' : 'বাং',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Column(
+                children: [
+                  const SizedBox(height: 36),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -136,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 12),
               Text(
-                'হিলফুল ফুযুল',
+                s.appNameBn,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -144,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                'কেশবপুর পশ্চিমপাড়া',
+                s.loginSubtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.secondaryLight,
                     ),
@@ -168,19 +190,18 @@ class _LoginScreenState extends State<LoginScreen>
                         indicatorColor: AppColors.primary,
                         onTap: (_) => setState(() {
                               _error = null;
-                              _registerMode = false;
                             }),
-                        tabs: const [
-                          Tab(text: 'অ্যাডমিন'),
-                          Tab(text: 'মেম্বার / কালেক্টর'),
+                        tabs: [
+                          Tab(text: s.memberOrCollector),
+                          Tab(text: s.admin),
                         ],
                       ),
                       Expanded(
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            _adminForm(),
                             _memberForm(),
+                            _adminForm(),
                           ],
                         ),
                       ),
@@ -190,12 +211,15 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ],
           ),
+          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _adminForm() {
+    final s = AppStrings.current;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Form(
@@ -203,16 +227,7 @@ class _LoginScreenState extends State<LoginScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_registerMode) ...[
-              Text('নাম', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameController,
-                validator: Validators.name,
-              ),
-              const SizedBox(height: 16),
-            ],
-            Text('ইমেইল', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.email, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _emailController,
@@ -220,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen>
               validator: Validators.email,
             ),
             const SizedBox(height: 16),
-            Text('পাসওয়ার্ড', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.password, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
@@ -246,20 +261,7 @@ class _LoginScreenState extends State<LoginScreen>
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(_registerMode ? 'প্রথম অ্যাডমিন তৈরি' : 'লগইন'),
-            ),
-            TextButton(
-              onPressed: _loading
-                  ? null
-                  : () => setState(() {
-                        _registerMode = !_registerMode;
-                        _error = null;
-                      }),
-              child: Text(
-                _registerMode
-                    ? 'আগে থেকে অ্যাকাউন্ট আছে? লগইন'
-                    : 'প্রথমবার? অ্যাডমিন রেজিস্টার',
-              ),
+                  : Text(s.login),
             ),
           ],
         ),
@@ -268,6 +270,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _memberForm() {
+    final s = AppStrings.current;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Form(
@@ -275,20 +278,20 @@ class _LoginScreenState extends State<LoginScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('ফোন নম্বর / ইউজার আইডি',
+            Text(s.phoneOrUserId,
                 style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'ফোন নম্বর দিন';
+                if (v == null || v.trim().isEmpty) return s.enterPhone;
                 return null;
               },
-              decoration: const InputDecoration(hintText: '০১৭XXXXXXXX'),
+              decoration: const InputDecoration(hintText: '01XXXXXXXX'),
             ),
             const SizedBox(height: 16),
-            Text('পাসওয়ার্ড', style: Theme.of(context).textTheme.labelLarge),
+            Text(s.password, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
@@ -314,11 +317,11 @@ class _LoginScreenState extends State<LoginScreen>
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('লগইন'),
+                  : Text(s.login),
             ),
             const SizedBox(height: 8),
             Text(
-              'অ্যাডমিন মেম্বার যোগ করলে ফোন নম্বরই ইউজার আইডি',
+              s.adminNote,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,

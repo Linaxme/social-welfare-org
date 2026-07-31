@@ -1,8 +1,12 @@
-/// Shared money / Bangla number helpers for UI
+import '../l10n/app_strings.dart';
+import '../../shared/data/locale_provider.dart';
+
 class Formatters {
   static const _bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 
-  static String toBnDigits(String input) {
+  static String toDigits(String input, {bool? forceBn}) {
+    final useBn = forceBn ?? LocaleProvider.instance.isBn;
+    if (!useBn) return input;
     final buffer = StringBuffer();
     for (final code in input.codeUnits) {
       if (code >= 48 && code <= 57) {
@@ -14,7 +18,8 @@ class Formatters {
     return buffer.toString();
   }
 
-  /// Formats amount like 150000 → ১,৫০,০০০
+  static String toBnDigits(String input) => toDigits(input, forceBn: true);
+
   static String money(num amount, {bool withSymbol = true}) {
     final intPart = amount.round().abs();
     final str = intPart.toString();
@@ -28,29 +33,30 @@ class Formatters {
       count++;
     }
     final formatted = buffer.toString().split('').reversed.join();
-    final bn = toBnDigits(formatted);
-    if (!withSymbol) return bn;
-    return '$bn টাকা';
+    final s = AppStrings.current;
+    final digits = toDigits(formatted);
+    if (!withSymbol) return digits;
+    return '$digits ${s.taka}';
   }
 
-  static String phone(String phone) => toBnDigits(phone);
+  static String phone(String phone) => toDigits(phone);
 
-  static const monthNamesBn = [
-    'জানুয়ারি',
-    'ফেব্রুয়ারি',
-    'মার্চ',
-    'এপ্রিল',
-    'মে',
-    'জুন',
-    'জুলাই',
-    'আগস্ট',
-    'সেপ্টেম্বর',
-    'অক্টোবর',
-    'নভেম্বর',
-    'ডিসেম্বর',
+  static List<String> get monthNamesBn => const [
+    'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+    'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর',
   ];
 
+  static List<String> get monthNamesEn => const [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  static List<String> get monthNames =>
+      LocaleProvider.instance.isEn ? monthNamesEn : monthNamesBn;
+
   static String shortDate(DateTime d) {
-    return '${toBnDigits('${d.day}')} ${monthNamesBn[d.month - 1]} ${toBnDigits('${d.year}')}';
+    final s = AppStrings.current;
+    final names = s.monthNames;
+    return '${toDigits('${d.day}')} ${names[d.month - 1]} ${toDigits('${d.year}')}';
   }
 }

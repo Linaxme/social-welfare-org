@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/repositories/donation_repository.dart';
 import '../../../shared/services/receipt_service.dart';
+import '../../../shared/data/app_session.dart';
 import '../../../shared/widgets/app_page_header.dart';
 import '../../../shared/widgets/widgets.dart';
 
@@ -47,8 +49,9 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.current;
     return AppPageScaffold(
-      title: 'কালেকশন হিস্ট্রি',
+      title: s.collectionHistory,
       body: Column(
         children: [
           Padding(
@@ -56,9 +59,9 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
             child: TextField(
               controller: _search,
               onChanged: (v) => setState(() => _query = v),
-              decoration: const InputDecoration(
-                hintText: 'নাম বা রিসিপ্ট নং',
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                hintText: s.searchNameOrReceipt,
+                prefixIcon: const Icon(Icons.search),
               ),
             ),
           ),
@@ -68,7 +71,7 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
             child: Row(
               children: [
                 FilterChip(
-                  label: Text(Formatters.toBnDigits('$_yearFilter')),
+                  label: Text(Formatters.toDigits('$_yearFilter')),
                   selected: true,
                   onSelected: (_) => _pickYear(),
                 ),
@@ -76,8 +79,8 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
                 FilterChip(
                   label: Text(
                     _monthFilter == null
-                        ? 'সব মাস'
-                        : Formatters.monthNamesBn[_monthFilter! - 1],
+                        ? s.allMonths
+                        : s.monthNames[_monthFilter! - 1],
                   ),
                   selected: _monthFilter != null,
                   onSelected: (_) => _pickMonth(),
@@ -91,7 +94,7 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
               builder: (context, snap) {
                 if (snap.hasError) {
                   return ErrorState(
-                    message: 'ডাটা লোড করা যায়নি। আবার চেষ্টা করুন।',
+                    message: '${s.loading} ${s.retry}',
                     onRetry: () => setState(() {}),
                   );
                 }
@@ -100,8 +103,8 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
                 }
                 final list = _filter(snap.data!);
                 if (list.isEmpty) {
-                  return const EmptyState(
-                      message: 'কোনো কালেকশন পাওয়া যায়নি');
+                  return EmptyState(
+                      message: s.noCollectionsFound);
                 }
                 return RefreshIndicator(
                   onRefresh: () async => setState(() {}),
@@ -115,10 +118,58 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
                         leading: AvatarCircle(name: d.donorName),
                         title: Text(d.donorName,
                             style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(
-                          '${Formatters.shortDate(d.paidAt)} · ${d.receiptNo}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${Formatters.shortDate(d.paidAt)} · ${d.receiptNo}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                            if (d.enteredByName != null &&
+                                d.enteredByName!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              InkWell(
+                                borderRadius: BorderRadius.circular(4),
+                                onTap: () {
+                                  if (d.enteredById != null &&
+                                      d.enteredById!.isNotEmpty) {
+                                    context.push(
+                                      '/my-collections?collectorId=${d.enteredById}&collectorName=${Uri.encodeComponent(d.enteredByName!)}',
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.person_pin_outlined,
+                                        size: 12,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${s.entryBy}: ${d.enteredByName}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -131,17 +182,49 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
                                 color: AppColors.success,
                               ),
                             ),
-                            GestureDetector(
-                              onTap: () => ReceiptService.preview(context, d),
-                              child: const Text(
-                                'রিসিপ্ট',
-                                style: TextStyle(
-                                    fontSize: 11, color: AppColors.primary),
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => ReceiptService.preview(context, d),
+                                  child: Text(
+                                    s.receipt,
+                                    style: const TextStyle(
+                                        fontSize: 11, color: AppColors.primary),
+                                  ),
+                                ),
+                                if (AppSession.instance.isAdmin) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => context.push(
+                                      '/donation/${d.id}/edit',
+                                      extra: d,
+                                    ),
+                                    child: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _confirmDelete(context, d),
+                                    child: const Icon(
+                                      Icons.delete_outline,
+                                      size: 16,
+                                      color: AppColors.error,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
-                        onTap: () => context.push('/members/${d.donorId}'),
+                        onTap: (AppSession.instance.isAdmin ||
+                                AppSession.instance.isCollector ||
+                                d.donorId == AppSession.instance.user.id)
+                            ? () => context.push('/members/${d.donorId}')
+                            : null,
                       );
                     },
                   ),
@@ -164,7 +247,7 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
           children: [
             for (final year in [y - 1, y, y + 1])
               ListTile(
-                title: Text(Formatters.toBnDigits('$year')),
+                title: Text(Formatters.toDigits('$year')),
                 onTap: () => Navigator.pop(ctx, year),
               ),
           ],
@@ -175,6 +258,7 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
   }
 
   Future<void> _pickMonth() async {
+    final s = AppStrings.current;
     final picked = await showModalBottomSheet<int>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -183,7 +267,7 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
           children: [
             for (var i = 1; i <= 12; i++)
               ListTile(
-                title: Text(Formatters.monthNamesBn[i - 1]),
+                title: Text(s.monthNames[i - 1]),
                 onTap: () => Navigator.pop(ctx, i),
               ),
           ],
@@ -191,5 +275,35 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
       ),
     );
     if (picked != null) setState(() => _monthFilter = picked);
+  }
+
+  Future<void> _confirmDelete(BuildContext context, DonationRecord d) async {
+    final s = AppStrings.current;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.moveToTrash),
+        content: Text(s.moveToTrashConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(s.moveToTrash),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await DonationRepository.instance.softDelete(d.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.itemMovedToTrash)),
+        );
+      }
+    }
   }
 }
