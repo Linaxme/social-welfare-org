@@ -1,0 +1,40 @@
+# Build outputs
+build/
+.dart_tool/
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Firebase
+.firebase/
+node_modules/
+
+# Platform generated
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+macos/Pods/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# Lock files
+pubspec.lock
+
+# Logs
+*.log
+
+# Git
+.git/
+
+# Assets (don't read image/binary files)
+assets/
+app_icon.png
+
+# Test coverage
+coverage/

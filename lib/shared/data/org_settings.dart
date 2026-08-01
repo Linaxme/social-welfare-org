@@ -7,7 +7,7 @@ class OrgSettings extends ChangeNotifier {
 
   String orgName = 'হিলফুল ফুযুল কেশবপুর পশ্চিমপাড়া';
   String apkDownloadUrl =
-      'https://github.com/Linaxme/social-welfare-org/releases/download/v1.0.0.1/hilful-fuzul.v1.0.0.1.apk';
+      'https://github.com/Linaxme/social-welfare-org/releases/download/v1.0.0.2/hilful-fuzul.v1.0.0.2.apk';
   bool collectorCanEditProfile = false;
   bool collectorCanEnterDonation = false;
   bool showDashboardSlider = true;
