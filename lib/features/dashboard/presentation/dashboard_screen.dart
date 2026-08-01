@@ -8,6 +8,7 @@ import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/data/app_session.dart';
+import '../../../shared/data/locale_provider.dart';
 import '../../../shared/data/org_settings.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/repositories/dashboard_repository.dart';
@@ -555,90 +556,15 @@ class _DashboardCarouselSectionState extends State<DashboardCarouselSection> {
       return const SizedBox.shrink();
     }
 
-    final isAdmin = AppSession.instance.isAdmin;
-    final isBoth = settings.sliderContentType == 'both';
-    final displayMode = isAdmin
-        ? _activeMode
-        : (settings.sliderContentType == 'aids' ? 'aids' : 'donors');
+    final displayMode = settings.sliderContentType == 'aids' ? 'aids' : 'donors';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Mode Switcher Bar (Visible to Admin Only) ──
-        if (isAdmin)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _ModeChip(
-                        icon: Icons.workspace_premium_rounded,
-                        label: '🏆 সেরা দাতা',
-                        isSelected: _activeMode == 'donors',
-                        activeColor: AppColors.secondary,
-                        onTap: () => setState(() => _activeMode = 'donors'),
-                      ),
-                      const SizedBox(width: 4),
-                      _ModeChip(
-                        icon: Icons.volunteer_activism_rounded,
-                        label: '🤝 সহায়তা কার্ড',
-                        isSelected: _activeMode == 'aids',
-                        activeColor: AppColors.primary,
-                        onTap: () => setState(() => _activeMode = 'aids'),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (isBoth)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.autorenew_rounded,
-                            size: 12, color: AppColors.primary),
-                        SizedBox(width: 4),
-                        Text(
-                          'অটো মোড',
-                          style: TextStyle(
-                              fontSize: 10.5,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-        // ── Active Carousel ──
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 300),
-          crossFadeState: displayMode == 'donors'
-              ? CrossFadeState.showFirst
-              : CrossFadeState.showSecond,
-          firstChild: TopDonorCarousel(showSectionHeader: !isAdmin),
-          secondChild: AidDisbursementCarousel(showSectionHeader: !isAdmin),
-        ),
-      ],
+    return AnimatedCrossFade(
+      duration: const Duration(milliseconds: 300),
+      crossFadeState: displayMode == 'donors'
+          ? CrossFadeState.showFirst
+          : CrossFadeState.showSecond,
+      firstChild: const TopDonorCarousel(showSectionHeader: true),
+      secondChild: const AidDisbursementCarousel(showSectionHeader: true),
     );
   }
 }
@@ -1575,10 +1501,12 @@ class _AidDisbursementCarouselState extends State<AidDisbursementCarousel> {
                 const Icon(Icons.volunteer_activism_rounded,
                     color: AppColors.primary, size: 18),
                 const SizedBox(width: 6),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'সহায়তা ও প্রদেয় অনুদান',
-                    style: TextStyle(
+                    LocaleProvider.instance.isEn
+                        ? 'Aid & Welfare Disbursements'
+                        : 'সহায়তা ও প্রদেয় অনুদান',
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -1641,10 +1569,12 @@ class _AidDisbursementCarouselState extends State<AidDisbursementCarousel> {
                   border: Border.all(
                       color: AppColors.primary.withValues(alpha: 0.1)),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
-                    'এখনো কোনো সহায়তা প্রদান করা হয়নি',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    LocaleProvider.instance.isEn
+                        ? 'No aid disbursements recorded yet'
+                        : 'এখনো কোনো সহায়তা প্রদান করা হয়নি',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
               );
@@ -1844,7 +1774,7 @@ class AidCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'গ্রহীতা:',
+                            LocaleProvider.instance.isEn ? 'Beneficiary:' : 'গ্রহীতা:',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.white.withValues(alpha: 0.75),
@@ -1917,7 +1847,9 @@ class AidCard extends StatelessWidget {
                       child: Text(
                         record.address.isNotEmpty
                             ? record.address
-                            : 'সমাজকল্যাণ সহায়তা প্রদান',
+                            : (LocaleProvider.instance.isEn
+                                ? 'Welfare Aid Distribution'
+                                : 'সমাজকল্যাণ সহায়তা প্রদান'),
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white.withValues(alpha: 0.85),

@@ -658,17 +658,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            const _SectionTitle(title: 'ড্যাশবোর্ড স্লাইডশো সেটিংস (Slider Settings)'),
+            _SectionTitle(
+              title: LocaleProvider.instance.isEn
+                  ? 'Dashboard Slider Settings'
+                  : 'ড্যাশবোর্ড স্লাইডশো সেটিংস (Slider Settings)',
+            ),
             _SettingsCard(
               children: [
                 SwitchListTile(
-                  title: const Text(
-                    'ড্যাশবোর্ড স্লাইডশো প্রদর্শন',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  title: Text(
+                    LocaleProvider.instance.isEn
+                        ? 'Show Dashboard Slider'
+                        : 'ড্যাশবোর্ড স্লাইডশো প্রদর্শন',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  subtitle: const Text(
-                    'ড্যাশবোর্ডের স্লাইডশো চালু বা বন্ধ করুন',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  subtitle: Text(
+                    LocaleProvider.instance.isEn
+                        ? 'Enable or disable top slider carousel on home screen'
+                        : 'ড্যাশবোর্ডের স্লাইডশো চালু বা বন্ধ করুন',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   activeThumbColor: AppColors.primary,
                   value: _settings.showDashboardSlider,
@@ -681,9 +689,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'স্লাইডশো মোড নির্বাচন (Content Mode):',
-                          style: TextStyle(
+                        Text(
+                          LocaleProvider.instance.isEn
+                              ? 'Select Slider Content Mode:'
+                              : 'স্লাইডশো মোড নির্বাচন (Content Mode):',
+                          style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
                             color: AppColors.textPrimary,
@@ -694,14 +704,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           dense: true,
                           contentPadding: EdgeInsets.zero,
                           activeColor: AppColors.primary,
-                          title: const Row(
+                          title: Row(
                             children: [
-                              Icon(Icons.workspace_premium_rounded, size: 18, color: AppColors.secondary),
-                              SizedBox(width: 8),
-                              Text('🏆 সেরা দাতা (Top Donors)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              const Icon(Icons.workspace_premium_rounded, size: 18, color: AppColors.secondary),
+                              const SizedBox(width: 8),
+                              Text(
+                                LocaleProvider.instance.isEn
+                                    ? '🏆 Top Donors Leaderboard'
+                                    : '🏆 সেরা দাতা (Top Donors)',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
                             ],
                           ),
-                          subtitle: const Text('কেবলমাত্র সেরা ডোনারদের র‍্যাঙ্কিং স্লাইডশো দেখাবে', style: TextStyle(fontSize: 11)),
+                          subtitle: Text(
+                            LocaleProvider.instance.isEn
+                                ? 'Show leaderboard carousel of top donors'
+                                : 'কেবলমাত্র সেরা ডোনারদের র‍্যাঙ্কিং স্লাইডশো দেখাবে',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           value: 'donors',
                           groupValue: _settings.sliderContentType,
                           onChanged: (val) {
@@ -712,14 +732,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           dense: true,
                           contentPadding: EdgeInsets.zero,
                           activeColor: AppColors.primary,
-                          title: const Row(
+                          title: Row(
                             children: [
-                              Icon(Icons.volunteer_activism_rounded, size: 18, color: AppColors.primary),
-                              SizedBox(width: 8),
-                              Text('🤝 সহায়তা ও প্রদেয় অনুদান (Aid Cards)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              const Icon(Icons.volunteer_activism_rounded, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                LocaleProvider.instance.isEn
+                                    ? '🤝 Aid & Welfare Disbursements'
+                                    : '🤝 সহায়তা ও প্রদেয় অনুদান (Aid Cards)',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
                             ],
                           ),
-                          subtitle: const Text('সংগঠনের প্রদানকৃত সহায়তা কার্ডসমূহ রঙিন স্লাইডশো দেখাবে', style: TextStyle(fontSize: 11)),
+                          subtitle: Text(
+                            LocaleProvider.instance.isEn
+                                ? 'Show colorful cards of aid disbursements'
+                                : 'সংগঠনের প্রদানকৃত সহায়তা কার্ডসমূহ রঙিন স্লাইডশো দেখাবে',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           value: 'aids',
                           groupValue: _settings.sliderContentType,
                           onChanged: (val) {
@@ -730,14 +760,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           dense: true,
                           contentPadding: EdgeInsets.zero,
                           activeColor: AppColors.primary,
-                          title: const Row(
+                          title: Row(
                             children: [
-                              Icon(Icons.swap_horizontal_circle_rounded, size: 18, color: AppColors.primaryDark),
-                              SizedBox(width: 8),
-                              Text('🔄 উভয়ই (Both Donors & Aids)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              const Icon(Icons.swap_horizontal_circle_rounded, size: 18, color: AppColors.primaryDark),
+                              const SizedBox(width: 8),
+                              Text(
+                                LocaleProvider.instance.isEn
+                                    ? '🔄 Both (Top Donors & Aid Cards)'
+                                    : '🔄 উভয়ই (Both Donors & Aids)',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
                             ],
                           ),
-                          subtitle: const Text('সেরা দাতা ও প্রদেয় অনুদান উভয়ই স্বয়ংক্রিয় স্লাইডশো হবে', style: TextStyle(fontSize: 11)),
+                          subtitle: Text(
+                            LocaleProvider.instance.isEn
+                                ? 'Automatically alternate between top donors and aid cards'
+                                : 'সেরা দাতা ও প্রদেয় অনুদান উভয়ই স্বয়ংক্রিয় স্লাইডশো হবে',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           value: 'both',
                           groupValue: _settings.sliderContentType,
                           onChanged: (val) {
@@ -851,23 +891,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     size: 22,
                   ),
                 ),
-                title: Text(
-                  LocaleProvider.instance.isEn
-                      ? 'Download Android APK / অ্যান্ড্রয়েড এপিকে ডাউনলোড'
-                      : 'অ্যান্ড্রয়েড এপিকে ডাউনলোড (Download Android APK)',
-                  style: const TextStyle(
-                    fontSize: 13.5,
+                title: const Text(
+                  'Download Android APK',
+                  style: TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
-                ),
-                subtitle: Text(
-                  OrgSettings.instance.apkDownloadUrl.isNotEmpty
-                      ? (LocaleProvider.instance.isEn
-                          ? 'Download APK file directly / সরাসরি এপিকে ফাইল ডাউনলোড করুন'
-                          : 'মোবাইলে সরাসরি ইনস্টল করতে এপিকে ফাইল ডাউনলোড করুন')
-                      : 'এপিকে ডাউনলোড লিঙ্ক যুক্ত করা হচ্ছে...',
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
