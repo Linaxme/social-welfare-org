@@ -555,83 +555,88 @@ class _DashboardCarouselSectionState extends State<DashboardCarouselSection> {
       return const SizedBox.shrink();
     }
 
+    final isAdmin = AppSession.instance.isAdmin;
     final isBoth = settings.sliderContentType == 'both';
+    final displayMode = isAdmin
+        ? _activeMode
+        : (settings.sliderContentType == 'aids' ? 'aids' : 'donors');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Mode Switcher Bar ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _ModeChip(
-                      icon: Icons.workspace_premium_rounded,
-                      label: '🏆 সেরা দাতা',
-                      isSelected: _activeMode == 'donors',
-                      activeColor: AppColors.secondary,
-                      onTap: () => setState(() => _activeMode = 'donors'),
-                    ),
-                    const SizedBox(width: 4),
-                    _ModeChip(
-                      icon: Icons.volunteer_activism_rounded,
-                      label: '🤝 সহায়তা কার্ড',
-                      isSelected: _activeMode == 'aids',
-                      activeColor: AppColors.primary,
-                      onTap: () => setState(() => _activeMode = 'aids'),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              if (isBoth)
+        // ── Mode Switcher Bar (Visible to Admin Only) ──
+        if (isAdmin)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                    ),
                   ),
-                  child: const Row(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.autorenew_rounded,
-                          size: 12, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text(
-                        'অটো মোড',
-                        style: TextStyle(
-                            fontSize: 10.5,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600),
+                      _ModeChip(
+                        icon: Icons.workspace_premium_rounded,
+                        label: '🏆 সেরা দাতা',
+                        isSelected: _activeMode == 'donors',
+                        activeColor: AppColors.secondary,
+                        onTap: () => setState(() => _activeMode = 'donors'),
+                      ),
+                      const SizedBox(width: 4),
+                      _ModeChip(
+                        icon: Icons.volunteer_activism_rounded,
+                        label: '🤝 সহায়তা কার্ড',
+                        isSelected: _activeMode == 'aids',
+                        activeColor: AppColors.primary,
+                        onTap: () => setState(() => _activeMode = 'aids'),
                       ),
                     ],
                   ),
                 ),
-            ],
+                const Spacer(),
+                if (isBoth)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.autorenew_rounded,
+                            size: 12, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text(
+                          'অটো মোড',
+                          style: TextStyle(
+                              fontSize: 10.5,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
 
         // ── Active Carousel ──
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 300),
-          crossFadeState: _activeMode == 'donors'
+          crossFadeState: displayMode == 'donors'
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
-          firstChild: const TopDonorCarousel(showSectionHeader: false),
-          secondChild: const AidDisbursementCarousel(showSectionHeader: false),
+          firstChild: TopDonorCarousel(showSectionHeader: !isAdmin),
+          secondChild: AidDisbursementCarousel(showSectionHeader: !isAdmin),
         ),
       ],
     );
