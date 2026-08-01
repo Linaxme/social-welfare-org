@@ -175,27 +175,12 @@ class _CollectorHistoryScreenState extends State<CollectorHistoryScreen> {
                                     fontSize: 12,
                                     color: AppColors.textSecondary),
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    Formatters.money(d.amount),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.success,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () =>
-                                        ReceiptService.preview(context, d),
-                                    child: const Icon(
-                                      Icons.receipt_long,
-                                      size: 20,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ],
+                              trailing: Text(
+                                Formatters.money(d.amount),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.success,
+                                ),
                               ),
                               onTap: (AppSession.instance.isAdmin ||
                                       AppSession.instance.isCollector ||

@@ -182,19 +182,10 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
                                 color: AppColors.success,
                               ),
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                GestureDetector(
-                                  onTap: () => ReceiptService.preview(context, d),
-                                  child: Text(
-                                    s.receipt,
-                                    style: const TextStyle(
-                                        fontSize: 11, color: AppColors.primary),
-                                  ),
-                                ),
-                                if (AppSession.instance.isAdmin) ...[
-                                  const SizedBox(width: 8),
+                            if (AppSession.instance.isAdmin)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                                   GestureDetector(
                                     onTap: () => context.push(
                                       '/donation/${d.id}/edit',
@@ -216,8 +207,7 @@ class _CollectionHistoryScreenState extends State<CollectionHistoryScreen> {
                                     ),
                                   ),
                                 ],
-                              ],
-                            ),
+                              ),
                           ],
                         ),
                         onTap: (AppSession.instance.isAdmin ||

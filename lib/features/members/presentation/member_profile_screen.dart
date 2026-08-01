@@ -273,16 +273,8 @@ class MemberProfileScreen extends StatelessWidget {
                                 '${Formatters.shortDate(history[i].paidAt)} · ${history[i].receiptNo}',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextButton(
-                                    onPressed: () => ReceiptService.preview(
-                                        context, history[i]),
-                                    child: Text(s.receipt),
-                                  ),
-                                  if (AppSession.instance.isAdmin)
-                                    PopupMenuButton<String>(
+                              trailing: AppSession.instance.isAdmin
+                                  ? PopupMenuButton<String>(
                                       padding: EdgeInsets.zero,
                                       iconSize: 18,
                                       icon: const Icon(
@@ -327,9 +319,8 @@ class MemberProfileScreen extends StatelessWidget {
                                           ),
                                         ),
                                       ],
-                                    ),
-                                ],
-                              ),
+                                    )
+                                  : null,
                             ),
                           ],
                         ],
