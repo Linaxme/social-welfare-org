@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -455,13 +456,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final uri = Uri.parse(url.trim());
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (kIsWeb) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+          webOnlyWindowName: '_self',
+        );
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('লিঙ্ক খুলতে ব্যর্থ হয়েছে')),
-          );
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('লিঙ্ক খুলতে ব্যর্থ হয়েছে')),
+            );
+          }
         }
       }
     } catch (e) {
@@ -649,6 +658,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
+            const _SectionTitle(title: 'ড্যাশবোর্ড স্লাইডশো সেটিংস (Slider Settings)'),
+            _SettingsCard(
+              children: [
+                SwitchListTile(
+                  title: const Text(
+                    'ড্যাশবোর্ড স্লাইডশো প্রদর্শন',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    'ড্যাশবোর্ডের স্লাইডশো চালু বা বন্ধ করুন',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  activeThumbColor: AppColors.primary,
+                  value: _settings.showDashboardSlider,
+                  onChanged: _settings.updateShowDashboardSlider,
+                ),
+                if (_settings.showDashboardSlider) ...[
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'স্লাইডশো মোড নির্বাচন (Content Mode):',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        RadioListTile<String>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: AppColors.primary,
+                          title: const Row(
+                            children: [
+                              Icon(Icons.workspace_premium_rounded, size: 18, color: AppColors.secondary),
+                              SizedBox(width: 8),
+                              Text('🏆 সেরা দাতা (Top Donors)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                          subtitle: const Text('কেবলমাত্র সেরা ডোনারদের র‍্যাঙ্কিং স্লাইডশো দেখাবে', style: TextStyle(fontSize: 11)),
+                          value: 'donors',
+                          groupValue: _settings.sliderContentType,
+                          onChanged: (val) {
+                            if (val != null) _settings.updateSliderContentType(val);
+                          },
+                        ),
+                        RadioListTile<String>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: AppColors.primary,
+                          title: const Row(
+                            children: [
+                              Icon(Icons.volunteer_activism_rounded, size: 18, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Text('🤝 সহায়তা ও প্রদেয় অনুদান (Aid Cards)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                          subtitle: const Text('সংগঠনের প্রদানকৃত সহায়তা কার্ডসমূহ রঙিন স্লাইডশো দেখাবে', style: TextStyle(fontSize: 11)),
+                          value: 'aids',
+                          groupValue: _settings.sliderContentType,
+                          onChanged: (val) {
+                            if (val != null) _settings.updateSliderContentType(val);
+                          },
+                        ),
+                        RadioListTile<String>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: AppColors.primary,
+                          title: const Row(
+                            children: [
+                              Icon(Icons.swap_horizontal_circle_rounded, size: 18, color: AppColors.primaryDark),
+                              SizedBox(width: 8),
+                              Text('🔄 উভয়ই (Both Donors & Aids)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                          subtitle: const Text('সেরা দাতা ও প্রদেয় অনুদান উভয়ই স্বয়ংক্রিয় স্লাইডশো হবে', style: TextStyle(fontSize: 11)),
+                          value: 'both',
+                          groupValue: _settings.sliderContentType,
+                          onChanged: (val) {
+                            if (val != null) _settings.updateSliderContentType(val);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 16),
             _SectionTitle(title: s.collectorPermission),
             Text(
               s.collectorPermDesc,
@@ -736,16 +838,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
-                leading: const Icon(Icons.android_rounded, color: AppColors.primary, size: 26),
-                title: const Text(
-                  'অ্যান্ড্রয়েড এপিকে ডাউনলোড',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.android,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  LocaleProvider.instance.isEn
+                      ? 'Download Android APK / অ্যান্ড্রয়েড এপিকে ডাউনলোড'
+                      : 'অ্যান্ড্রয়েড এপিকে ডাউনলোড (Download Android APK)',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 subtitle: Text(
                   OrgSettings.instance.apkDownloadUrl.isNotEmpty
-                      ? 'মোবাইলে ইনস্টল করতে সরাসরি এপিকে ফাইল ডাউনলোড করুন'
+                      ? (LocaleProvider.instance.isEn
+                          ? 'Download APK file directly / সরাসরি এপিকে ফাইল ডাউনলোড করুন'
+                          : 'মোবাইলে সরাসরি ইনস্টল করতে এপিকে ফাইল ডাউনলোড করুন')
                       : 'এপিকে ডাউনলোড লিঙ্ক যুক্ত করা হচ্ছে...',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -756,7 +878,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: _showEditApkUrlDialog,
                         tooltip: 'লিঙ্ক সেট করুন',
                       ),
-                    const Icon(Icons.download_rounded, color: AppColors.primary),
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.file_download_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
                   ],
                 ),
                 onTap: _downloadApk,

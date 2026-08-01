@@ -10,6 +10,8 @@ class OrgSettings extends ChangeNotifier {
       'https://github.com/Linaxme/social-welfare-org/releases/download/v1.0.0.1/hilful-fuzul.v1.0.0.1.apk';
   bool collectorCanEditProfile = false;
   bool collectorCanEnterDonation = false;
+  bool showDashboardSlider = true;
+  String sliderContentType = 'donors'; // 'donors', 'aids', 'both'
 
   void applyFromMap(Map<String, dynamic> d) {
     orgName = d['orgName'] as String? ?? orgName;
@@ -17,7 +19,33 @@ class OrgSettings extends ChangeNotifier {
     collectorCanEditProfile = d['collectorCanEditProfile'] as bool? ?? false;
     collectorCanEnterDonation =
         d['collectorCanEnterDonation'] as bool? ?? false;
+    showDashboardSlider = d['showDashboardSlider'] as bool? ?? true;
+    sliderContentType = d['sliderContentType'] as String? ?? 'donors';
     notifyListeners();
+  }
+
+  Future<void> updateShowDashboardSlider(bool value) async {
+    showDashboardSlider = value;
+    notifyListeners();
+    await FirebaseFirestore.instance
+        .collection('org_settings')
+        .doc('global')
+        .set({
+      'showDashboardSlider': value,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateSliderContentType(String type) async {
+    sliderContentType = type;
+    notifyListeners();
+    await FirebaseFirestore.instance
+        .collection('org_settings')
+        .doc('global')
+        .set({
+      'sliderContentType': type,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> updateApkDownloadUrl(String url) async {

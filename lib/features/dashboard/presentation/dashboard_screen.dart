@@ -11,6 +11,7 @@ import '../../../shared/data/app_session.dart';
 import '../../../shared/data/org_settings.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/repositories/dashboard_repository.dart';
+import '../../../shared/repositories/disbursement_repository.dart';
 import '../../../shared/repositories/donation_repository.dart';
 import '../../../shared/repositories/user_repository.dart';
 import '../../../shared/widgets/app_page_header.dart';
@@ -246,9 +247,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                       ],
-                      // ── Top Donors Carousel ─────────────────────
+                      // ── Dashboard Dynamic Carousel (Donors / Aid Cards) ──
                       SliverToBoxAdapter(
-                        child: TopDonorCarousel(),
+                        child: DashboardCarouselSection(),
                       ),
                       SliverToBoxAdapter(
                         child: Padding(
@@ -507,10 +508,202 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+// ─── Dashboard Carousel Section (Donors / Aids Switcher) ────────────────────
+
+class DashboardCarouselSection extends StatefulWidget {
+  const DashboardCarouselSection({super.key});
+
+  @override
+  State<DashboardCarouselSection> createState() =>
+      _DashboardCarouselSectionState();
+}
+
+class _DashboardCarouselSectionState extends State<DashboardCarouselSection> {
+  late String _activeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeMode = OrgSettings.instance.sliderContentType == 'aids'
+        ? 'aids'
+        : 'donors';
+    OrgSettings.instance.addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    OrgSettings.instance.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    setState(() {
+      final configType = OrgSettings.instance.sliderContentType;
+      if (configType == 'aids') {
+        _activeMode = 'aids';
+      } else if (configType == 'donors') {
+        _activeMode = 'donors';
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = OrgSettings.instance;
+    if (!settings.showDashboardSlider) {
+      return const SizedBox.shrink();
+    }
+
+    final isBoth = settings.sliderContentType == 'both';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Mode Switcher Bar ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ModeChip(
+                      icon: Icons.workspace_premium_rounded,
+                      label: '🏆 সেরা দাতা',
+                      isSelected: _activeMode == 'donors',
+                      activeColor: AppColors.secondary,
+                      onTap: () => setState(() => _activeMode = 'donors'),
+                    ),
+                    const SizedBox(width: 4),
+                    _ModeChip(
+                      icon: Icons.volunteer_activism_rounded,
+                      label: '🤝 সহায়তা কার্ড',
+                      isSelected: _activeMode == 'aids',
+                      activeColor: AppColors.primary,
+                      onTap: () => setState(() => _activeMode = 'aids'),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              if (isBoth)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.autorenew_rounded,
+                          size: 12, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'অটো মোড',
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        // ── Active Carousel ──
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 300),
+          crossFadeState: _activeMode == 'donors'
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          firstChild: const TopDonorCarousel(showSectionHeader: false),
+          secondChild: const AidDisbursementCarousel(showSectionHeader: false),
+        ),
+      ],
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final Color activeColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Top Donor Carousel ─────────────────────────────────────────────────────
 
 class TopDonorCarousel extends StatefulWidget {
-  const TopDonorCarousel({super.key});
+  const TopDonorCarousel({super.key, this.showSectionHeader = true});
+
+  final bool showSectionHeader;
 
   @override
   State<TopDonorCarousel> createState() => _TopDonorCarouselState();
@@ -570,54 +763,56 @@ class _TopDonorCarouselState extends State<TopDonorCarousel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Section header + View All action ─────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child: Row(
-            children: [
-              const Icon(Icons.workspace_premium_rounded,
-                  color: AppColors.secondary, size: 18),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  s.topDonors,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+        if (widget.showSectionHeader) ...[
+          // ── Section header + View All action ─────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.workspace_premium_rounded,
+                    color: AppColors.secondary, size: 18),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    s.topDonors,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-              InkWell(
-                onTap: () => context.push('/top-donors'),
-                borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  child: Row(
-                    children: [
-                      Text(
-                        s.viewAll,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                InkWell(
+                  onTap: () => context.push('/top-donors'),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      children: [
+                        Text(
+                          s.viewAll,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 11,
                           color: AppColors.primary,
                         ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 11,
-                        color: AppColors.primary,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
+        ],
         // ── Cards ────────────────────────────────────────────────
         StreamBuilder<List<TopDonorStat>>(
           stream: _topDonorsStream,
@@ -1296,6 +1491,442 @@ class _MonthlyChart extends StatelessWidget {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Aid Disbursement Carousel & Card ───────────────────────────────────────
+
+class AidDisbursementCarousel extends StatefulWidget {
+  const AidDisbursementCarousel({super.key, this.showSectionHeader = true});
+
+  final bool showSectionHeader;
+
+  @override
+  State<AidDisbursementCarousel> createState() =>
+      _AidDisbursementCarouselState();
+}
+
+class _AidDisbursementCarouselState extends State<AidDisbursementCarousel> {
+  late final PageController _pageController;
+  late final Stream<List<DisbursementRecord>> _disbursementsStream;
+  int _currentPage = 0;
+  Timer? _autoTimer;
+  List<DisbursementRecord> _currentAids = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _disbursementsStream = DisbursementRepository.instance.watchAll();
+    _pageController = PageController(viewportFraction: 0.92, initialPage: 0);
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _autoTimer?.cancel();
+    _autoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || _currentAids.length <= 1) return;
+      if (!_pageController.hasClients) return;
+      try {
+        final next = _currentPage + 1;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+        );
+      } catch (e) {
+        debugPrint('Aid Carousel slide error: $e');
+      }
+    });
+  }
+
+  void _onPageChanged(int page) {
+    if (_currentPage != page) {
+      setState(() => _currentPage = page);
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.current;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.showSectionHeader) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.volunteer_activism_rounded,
+                    color: AppColors.primary, size: 18),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'সহায়তা ও প্রদেয় অনুদান',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => context.go('/home/help'),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      children: [
+                        Text(
+                          s.viewAll,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 11,
+                          color: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        StreamBuilder<List<DisbursementRecord>>(
+          stream: _disbursementsStream,
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 160,
+                child: Center(
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.primary),
+                ),
+              );
+            }
+            final aids = snap.data ?? [];
+            _currentAids = aids;
+
+            if (aids.isEmpty) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.1)),
+                ),
+                child: const Center(
+                  child: Text(
+                    'এখনো কোনো সহায়তা প্রদান করা হয়নি',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ),
+              );
+            }
+
+            final totalAids = aids.length;
+            final isMulti = totalAids > 1;
+            final currentActiveIndex = _currentPage % totalAids;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      height: 166,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: isMulti ? 10000 : 1,
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (context, i) {
+                          final idx = i % totalAids;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            child: AidCard(
+                              record: aids[idx],
+                              cardIndex: idx,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                if (isMulti) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(totalAids, (i) {
+                      final active = i == currentActiveIndex;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: active ? 18 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.primary
+                              : AppColors.primary.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class AidCard extends StatelessWidget {
+  const AidCard({
+    super.key,
+    required this.record,
+    required this.cardIndex,
+  });
+
+  final DisbursementRecord record;
+  final int cardIndex;
+
+  static const List<List<Color>> _cardGradients = [
+    [Color(0xFF007A52), Color(0xFF004D34)],
+    [Color(0xFF6B21A8), Color(0xFF4C1D95)],
+    [Color(0xFF1E3A8A), Color(0xFF1E1B4B)],
+    [Color(0xFF991B1B), Color(0xFF7F1D1D)],
+    [Color(0xFF065F46), Color(0xFF064E3B)],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final gradientColors = _cardGradients[cardIndex % _cardGradients.length];
+
+    IconData getReasonIcon(String reason) {
+      if (reason.contains('চিকিৎসা') || reason == 'medical') {
+        return Icons.local_hospital_rounded;
+      }
+      if (reason.contains('শিক্ষা') || reason == 'education') {
+        return Icons.school_rounded;
+      }
+      if (reason.contains('বিধবা') || reason == 'widow') {
+        return Icons.favorite_rounded;
+      }
+      return Icons.volunteer_activism_rounded;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors.first.withValues(alpha: 0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Glossy Top Highlight Line
+          Positioned(
+            top: 0,
+            left: 20,
+            right: 20,
+            height: 1.5,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.5),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Top Row: Category Icon Badge & Reason
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            getReasonIcon(record.reason),
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            record.reasonLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    // Date Badge
+                    Text(
+                      Formatters.shortDate(record.date),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Middle: Beneficiary Name & Amount
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'গ্রহীতা:',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.75),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            record.beneficiaryName,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (record.phone.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '📱 ${record.phone}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // Amount Gold / Glossy Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        Formatters.money(record.amount),
+                        style: const TextStyle(
+                          color: Color(0xFF371B00),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Bottom: Address or Entered By
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 13,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        record.address.isNotEmpty
+                            ? record.address
+                            : 'সমাজকল্যাণ সহায়তা প্রদান',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
